@@ -146,6 +146,8 @@ nav .btn{margin:0;padding:6px 14px;font-size:14px;background:var(--bg)}
 .bub figcaption{margin-top:8px;font-size:.8em;color:var(--dim);line-height:1.25}
 @media (max-width:760px){#view{padding-top:calc(124px + env(safe-area-inset-top,0px))}.bub{width:96px}.bub .ph{width:88px;height:88px}}
 .maptip{position:fixed;z-index:50;pointer-events:none;background:#0b1647;border:1px solid #ffcc33;border-radius:8px;padding:8px 12px;font-size:14px;line-height:1.35;box-shadow:0 8px 24px rgba(0,0,0,.4);max-width:240px}.maptip b{font-family:'Bricolage Grotesque',Arial,sans-serif}
+.pctbox{display:flex;align-items:center;gap:18px;margin:10px 0 8px}.pctbig{font:800 clamp(52px,10vw,84px)/1 'Bricolage Grotesque',Arial,sans-serif;color:#ffcc33;letter-spacing:-.03em}.pctbox span{color:var(--dim);font-size:.9em}
+.pctbar{height:12px;background:rgba(255,255,255,.08);border-radius:8px;overflow:hidden;margin:0 0 16px;max-width:860px}.pctbar i{display:block;height:100%;width:0;background:#ffcc33;border-radius:8px;transition:width .8s}
 </style>
 </head>
 <body>
@@ -421,8 +423,8 @@ const FORM_URL='https://forms.gle/JAVUJ6KMev18qfve8';const SHEET_CSV='https://do
 const NAME2ID={'Einar Kári':'einar','Snorri':'snorri','Leon':'leon'};const IS2ISO=Object.fromEntries(EU.map(([k,n])=>[n,k]));
 function parseCSV(t){const rows=[];let row=[],f='',q=false;for(let i=0;i<t.length;i++){const c=t[i];if(q){if(c=='"'){if(t[i+1]=='"'){f+='"';i++}else q=false}else f+=c}else if(c=='"')q=true;else if(c==','){row.push(f);f=''}else if(c=='\n'||c=='\r'){if(c=='\r'&&t[i+1]=='\n')i++;row.push(f);rows.push(row);row=[];f=''}else f+=c}if(f||row.length){row.push(f);rows.push(row)}return rows}
 function fromCSV(t){const rows=parseCSV(t).slice(1).filter(r=>r.length>=3);const v={};rows.forEach(r=>{const id=NAME2ID[(r[1]||'').trim()];if(!id)return;v[id]=(r[2]||'').split(',').map(x=>IS2ISO[x.trim()]).filter(Boolean)});return v}
-(SHEET_CSV?fetch(SHEET_CSV+(SHEET_CSV.includes('?')?'&':'?')+'t='+Date.now()).then(r=>r.ok?r.text():Promise.reject()).then(t=>{const v=fromCSV(t);VISITED=Object.assign({},VISITED,v);if(location.hash==='#/kort')route();drawMini()}).catch(()=>{}):Promise.resolve());
-if(!SHEET_CSV)fetch('visited.json',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(j=>{if(j&&j.visited){VISITED=j.visited;if(location.hash==='#/kort')route();drawMini()}}).catch(()=>{});
+(SHEET_CSV?fetch(SHEET_CSV+(SHEET_CSV.includes('?')?'&':'?')+'t='+Date.now()).then(r=>r.ok?r.text():Promise.reject()).then(t=>{const v=fromCSV(t);VISITED=Object.assign({},VISITED,v);if(location.hash==='#/kort')route();drawMini();updPct()}).catch(()=>{}):Promise.resolve());
+if(!SHEET_CSV)fetch('visited.json',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(j=>{if(j&&j.visited){VISITED=j.visited;if(location.hash==='#/kort')route();drawMini();updPct()}}).catch(()=>{});
 const loadScript=u=>new Promise((ok,no)=>{const e=document.createElement('script');e.src=u;e.onload=ok;e.onerror=no;document.head.appendChild(e)});
 let GEO=null,GEOP=null;
 function getGeo(){if(GEO)return Promise.resolve(GEO);if(GEOP)return GEOP;
@@ -433,6 +435,9 @@ function getGeo(){if(GEO)return Promise.resolve(GEO);if(GEOP)return GEOP;
   proj.fitExtent([[10,10],[790,690]],box);const path=d3.geoPath(proj);
   GEO=all.map(f=>({iso:NAME2ISO[f.properties.name]||null,name:f.properties.name,d:path(f)})).filter(g=>g.d);return GEO});
  return GEOP}
+const NOT44=['TR','GE','AM','AZ','FO','XK','CY'];const EU44=EU.map(e=>e[0]).filter(k=>!NOT44.includes(k));
+function pctStats(){const u=new Set();TEAM.forEach(t=>(VISITED[t.id]||[]).forEach(k=>{if(EU44.includes(k))u.add(k)}));const n=u.size,tot=EU44.length;return {n,tot,pct:Math.round(n/tot*100)}}
+function updPct(){const st=pctStats();document.querySelectorAll('.pctnum').forEach(e=>e.textContent=st.pct+'%');document.querySelectorAll('.pctsub').forEach(e=>e.textContent=st.n+' af '+st.tot+' löndum Evrópu');document.querySelectorAll('.pctbar i').forEach(e=>e.style.width=st.pct+'%')}
 function whoVisited(iso){return TEAM.filter(t=>(VISITED[t.id]||[]).includes(iso))}
 function fillFor(iso){if(!iso)return '#16236b';return whoVisited(iso).length?'#ffcc33':'#2a3a8f'}
 function mapSvg(geo,mode,interactive){return `<svg class="emap" viewBox="0 0 800 700" role="img" aria-label="Kort af Evrópu"><rect width="800" height="700" fill="#0b2a5c"/>${geo.map(g=>`<path d="${g.d}" fill="${fillFor(g.iso)}" stroke="#0b1647" stroke-width=".7"${g.iso?` data-iso="${g.iso}"`:''}${interactive&&g.iso?' tabindex="0"':''}></path>`).join('')}</svg>`}
@@ -482,8 +487,8 @@ const items=[
 ...[0,1,3].map((m,n)=>({cd:{img:gvsv(m,GV[m].c),n:GV[m].n,meta:GV[m].place,s:GV[m].s,sm:GV[m].sm,p:GV[m].p.split('. ')[0]+'.',c:GV[m].c,go:'#/stjornarfar'},x:n%2?260:-260})),
 {h:'<h2 class="big">Atvinnuhættir í Evrópu</h2><p>Hvernig fólk vinnur fyrir sér, og áhrifin á loftslag, auðlindir og hefðir.</p>',cls:'text',x:0},
 ...[0,3,4].map((m,n)=>({cd:{img:atsv(m,AT[m].c),n:AT[m].n,meta:AT[m].place,s:AT[m].s,sm:AT[m].sm,p:AT[m].p.split('. ')[0]+'.',c:AT[m].c,go:'#/atvinnuvegir'},x:n%2?260:-260})),
-{h:'<h2 class="big">Löndin sem við höfum heimsótt</h2><p>Einar Kári, Snorri og Leon merkja inn þau Evrópulönd sem þeir hafa komið til.</p>',cls:'text',x:0},
-{cd:{img:'<div id="minimap" class="minimap"><p style="padding:20px">Hleð korti…</p></div>',n:'Kortið okkar',meta:'Smelltu til að sjá hver hefur farið hvert',s:'Ferðakort hópsins',sm:'gul lönd hefur að minnsta kosti eitt okkar heimsótt',p:'Farðu yfir land á kortinu til að sjá hver hefur komið þangað.',c:'#7be0a0',go:'#/kort'},x:0},
+{h:'<h2 class="big">Löndin sem við höfum heimsótt</h2><p>Saman höfum við komið til <b class="pctnum">–</b> af löndum Evrópu.</p>',cls:'text',x:0},
+{cd:{img:'<div id="minimap" class="minimap"><p style="padding:20px">Hleð korti…</p></div>',n:'Kortið okkar',meta:'Smelltu til að sjá hver hefur farið hvert',s:'<span class="pctnum">–</span> af Evrópu',sm:'<span class="pctsub"></span> hefur að minnsta kosti eitt okkar heimsótt',p:'Farðu yfir land á kortinu til að sjá hver hefur komið þangað.',c:'#7be0a0',go:'#/kort'},x:0},
 {h:'<div><b>24</b><span>opinber tungumál í Evrópusambandinu</span></div><div><b>4</b><span>höf umlykja álfuna: Atlantshaf, Norður-Íshaf, Miðjarðarhaf og Svartahaf</span></div><div><b>Elbrus</b><span>5.642 m, hæsta fjall álfunnar, í Kákasus</span></div>',cls:'facts',x:0},
 {h:'<h2 class="big">Sama kortið, endalausar sögur</h2><p>Á bak við hver landamæri sem þú fórst yfir leynist annað tungumál, annar réttur og önnur leið til að segja sömu söguna.</p><a class="btn" href="#/lond">Skoða öll lönd</a> <a class="btn" href="#/dyr">Skoða dýrin</a><h3 class="teamh">Hópurinn</h3>'+teamBubbles()+'<p style="margin-top:22px;font-size:.8em"><a href="#/myndir">Myndir og höfundar</a></p>',cls:'text end',x:0}
 ];
@@ -524,7 +529,7 @@ const SN=document.getElementById('secnav');SN.innerHTML=SECS.map(([l,n],k)=>`<bu
 function goSec(n){const go=()=>{const m=document.documentElement.scrollHeight-innerHeight;scrollTo({top:m*n/(items.length-1),behavior:'auto'})};if(location.hash&&location.hash!=='#/'&&location.hash!=='#'){location.hash='#/';setTimeout(go,60)}else go()}
 SN.addEventListener('click',e=>{const b=e.target.closest('button');if(b)goSec(+b.dataset.n)});
 let lastSec=-1;function markSec(){const idx=cur*(items.length-1)+.35;let k=0;SECS.forEach(([l,n],j)=>{if(n<=idx)k=j});if(k!==lastSec){lastSec=k;SN.querySelectorAll('button').forEach((b,j)=>b.classList.toggle('on',j===k));const b=SN.children[k];if(b&&SN.scrollWidth>SN.clientWidth)SN.scrollTo({left:b.offsetLeft-SN.clientWidth/2+b.offsetWidth/2,behavior:'smooth'})}}
-setInterval(markSec,200);setTimeout(drawMini,1500);
+setInterval(markSec,200);updPct();setTimeout(drawMini,1500);
 
 /* pages (hash routes) */
 const V=document.getElementById('view'),root=document.documentElement;
@@ -548,8 +553,8 @@ function route(){
  if(h==='natturan'){document.title='Náttúra og auðlindir – Evrópa';
   V.innerHTML=`<div class="idx"><h1>Náttúra, auðlindir og loftslag</h1><p class="lead">Hér er sagt frá helstu náttúruauðlindum Evrópu og hvernig þær eru nýttar í daglegu lífi, hvaða loftslags- og gróðurbelti eru í álfunni og hvernig náttúrulegir eiginleikar hafa mótað menninguna.</p><h2 class="sec">Helstu náttúruauðlindir</h2><div class="grid wide">${NA.map((d,m)=>`<div class="tile" style="--c:${d.c}">${nasv(m,d.c)}<h3>${d.n}</h3><span>${d.place}</span><p><b>${d.s}</b> – ${d.sm}.</p><p>${d.p}</p><p><b>Tvö dæmi úr daglegu lífi:</b></p><ul class="mini">${d.ex.map(x=>`<li>${x}</li>`).join('')}</ul></div>`).join('')}</div><h2 class="sec">Loftslags- og gróðurbelti</h2><p class="lead">Evrópa nær frá norðurslóðum í norðri til Miðjarðarhafs í suðri, og því eru loftslagsbeltin mörg. Þau hafa áhrif á gróður, atvinnuhætti og hefðir.</p><div class="grid wide">${KL.map((d,m)=>`<div class="tile" style="--c:${d.c}">${klsv(m,d.c)}<h3>${d.n}</h3><span>${d.place}</span><p><b>${d.s}</b> – ${d.sm}.</p><p><b>Áhrif á atvinnuhætti:</b> ${d.lv}</p><p><b>Áhrif á hefðir:</b> ${d.cu}</p></div>`).join('')}</div><h2 class="sec">Hvernig náttúran hefur mótað menninguna</h2><div class="grid wide">${NM.map((d,m)=>`<div class="tile" style="--c:${d.c}">${nmsv(m,d.c)}<h3>${d.n}</h3><span>${d.place}</span><p><b>${d.s}</b> – ${d.sm}.</p><p>${d.cu}</p></div>`).join('')}</div></div>`;return}
  if(h==='kort'){document.title='Kortið okkar – Evrópa';
-  V.innerHTML=`<div class="idx"><h1>Löndin sem við höfum heimsótt</h1><p class="lead">Gulu löndin hefur að minnsta kosti eitt okkar heimsótt. Farðu yfir land, eða smelltu á það í síma, til að sjá hver hefur komið þangað.</p><div id="bigmap" class="bigmap"><p style="padding:30px">Hleð korti…</p></div><div class="maptip" id="maptip" hidden></div><div class="mleg"><span><i style="background:#ffcc33"></i>Heimsótt</span><span><i style="background:#2a3a8f"></i>Ekki heimsótt enn</span></div><p id="mapinfo" class="lead" style="margin-top:12px">&nbsp;</p><a class="btn" href="${FORM_URL}" target="_blank" rel="noopener">Merkja löndin mín</a></div>`;
-  const tip=()=>document.getElementById('maptip');
+  V.innerHTML=`<div class="idx"><h1>Löndin sem við höfum heimsótt</h1><p class="lead">Gulu löndin hefur að minnsta kosti eitt okkar heimsótt. Farðu yfir land, eða smelltu á það í síma, til að sjá hver hefur komið þangað.</p><div class="pctbox"><div class="pctbig pctnum">–</div><div><b>af Evrópu sem við höfum heimsótt saman</b><br><span class="pctsub"></span></div></div><div class="pctbar"><i></i></div><div id="bigmap" class="bigmap"><p style="padding:30px">Hleð korti…</p></div><div class="maptip" id="maptip" hidden></div><div class="mleg"><span><i style="background:#ffcc33"></i>Heimsótt</span><span><i style="background:#2a3a8f"></i>Ekki heimsótt enn</span></div><p id="mapinfo" class="lead" style="margin-top:12px">&nbsp;</p><a class="btn" href="${FORM_URL}" target="_blank" rel="noopener">Merkja löndin mín</a></div>`;
+  updPct();const tip=()=>document.getElementById('maptip');
   const label=iso=>{const w=whoVisited(iso);return `<b>${ISNAME[iso]}</b><br>${w.length?w.map(t=>t.s).join(', '):'Enginn ennþá'}`};
   getGeo().then(g=>{const el=document.getElementById('bigmap');if(!el)return;el.innerHTML=mapSvg(g,'all',true);
    el.onmousemove=e=>{const iso=e.target.dataset&&e.target.dataset.iso,t=tip();if(!t)return;if(!iso){t.hidden=true;return}t.innerHTML=label(iso);t.hidden=false;t.style.left=(e.clientX+14)+'px';t.style.top=(e.clientY+14)+'px'};
