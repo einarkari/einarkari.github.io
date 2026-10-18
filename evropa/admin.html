@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="is"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kortastjórnun</title><meta name="robots" content="noindex">
+<style>
+:root{--bg:#0b1647;--ink:#f3efe6;--dim:#aab3d6;--gold:#ffcc33;--card:#16236b;--line:#3a4a9c}
+*{box-sizing:border-box;margin:0}body{background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,Arial,sans-serif;padding:20px}
+main{max-width:1000px;margin:0 auto}h1{font-size:32px;margin-bottom:6px}p{color:var(--dim)}
+.tabs{display:flex;gap:8px;flex-wrap:wrap;margin:16px 0}.tabs button{border:2px solid var(--c);background:none;color:var(--ink);border-radius:20px;padding:7px 16px;font-weight:700;cursor:pointer}.tabs button.on{background:var(--c);color:#0b1647}
+#map svg{width:100%;display:block;border-radius:8px;border:1px solid var(--line)}#map path[data-iso]{cursor:pointer}#map path[data-iso]:hover{stroke:#fff;stroke-width:1.6}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:4px 12px;margin:14px 0}.grid label{font-size:14px;display:flex;gap:6px;align-items:center}
+textarea{width:100%;height:150px;background:#0f1b5a;color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:10px;font:13px monospace}
+.btn{display:inline-block;margin:8px 8px 0 0;padding:9px 16px;border:2px solid var(--gold);border-radius:24px;background:none;color:var(--gold);font-weight:700;cursor:pointer;text-decoration:none}.btn:hover{background:var(--gold);color:var(--bg)}
+ol{color:var(--dim);margin:8px 0 0 20px}
+</style></head><body><main>
+<h1>Kortastjórnun</h1>
+<p>Veldu nafn og smelltu á lönd á kortinu, eða hakaðu við í listanum, til að merkja þau sem heimsótt.</p>
+<div class="tabs" id="tabs"></div>
+<div id="map"><p style="padding:30px">Hleð korti…</p></div>
+<div class="grid" id="list"></div>
+<h2 style="margin-top:20px">Vista</h2>
+<ol><li>Smelltu á „Afrita gögn“.</li><li>Smelltu á „Opna í GitHub“, veldu allan textann þar, límdu nýju gögnin yfir og ýttu á „Commit changes“.</li><li>Eftir um eina mínútu birtist breytingin á kortinu á síðunni.</li></ol>
+<textarea id="out" readonly></textarea>
+<button class="btn" id="copy">Afrita gögn</button><a class="btn" href="https://github.com/einarkari/einarkari.github.io/edit/main/evropa/visited.json" target="_blank" rel="noopener">Opna í GitHub</a><a class="btn" href="./#/kort">Til baka á kortið</a>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js"></script>
+<script>
+const EU=[["AL", "Albanía", ["Albania"]], ["AD", "Andorra", ["Andorra"]], ["AT", "Austurríki", ["Austria"]], ["BY", "Hvíta-Rússland", ["Belarus"]], ["BE", "Belgía", ["Belgium"]], ["BA", "Bosnía og Hersegóvína", ["Bosnia and Herz.", "Bosnia and Herzegovina"]], ["BG", "Búlgaría", ["Bulgaria"]], ["HR", "Króatía", ["Croatia"]], ["CY", "Kýpur", ["Cyprus", "N. Cyprus"]], ["CZ", "Tékkland", ["Czechia", "Czech Rep.", "Czech Republic"]], ["DK", "Danmörk", ["Denmark"]], ["EE", "Eistland", ["Estonia"]], ["FO", "Færeyjar", ["Faeroe Is.", "Faroe Is.", "Faroe Islands"]], ["FI", "Finnland", ["Finland"]], ["FR", "Frakkland", ["France"]], ["DE", "Þýskaland", ["Germany"]], ["GR", "Grikkland", ["Greece"]], ["HU", "Ungverjaland", ["Hungary"]], ["IS", "Ísland", ["Iceland"]], ["IE", "Írland", ["Ireland"]], ["IT", "Ítalía", ["Italy"]], ["XK", "Kósovó", ["Kosovo"]], ["LV", "Lettland", ["Latvia"]], ["LI", "Liechtenstein", ["Liechtenstein"]], ["LT", "Litháen", ["Lithuania"]], ["LU", "Lúxemborg", ["Luxembourg"]], ["MT", "Malta", ["Malta"]], ["MD", "Moldóva", ["Moldova"]], ["MC", "Mónakó", ["Monaco"]], ["ME", "Svartfjallaland", ["Montenegro"]], ["NL", "Holland", ["Netherlands"]], ["MK", "Norður-Makedónía", ["North Macedonia", "Macedonia"]], ["NO", "Noregur", ["Norway"]], ["PL", "Pólland", ["Poland"]], ["PT", "Portúgal", ["Portugal"]], ["RO", "Rúmenía", ["Romania"]], ["RU", "Rússland", ["Russia"]], ["SM", "San Marínó", ["San Marino"]], ["RS", "Serbía", ["Serbia"]], ["SK", "Slóvakía", ["Slovakia"]], ["SI", "Slóvenía", ["Slovenia"]], ["ES", "Spánn", ["Spain"]], ["SE", "Svíþjóð", ["Sweden"]], ["CH", "Sviss", ["Switzerland"]], ["UA", "Úkraína", ["Ukraine"]], ["GB", "Bretland", ["United Kingdom"]], ["VA", "Vatíkanið", ["Vatican"]], ["TR", "Tyrkland", ["Turkey", "Türkiye"]], ["GE", "Georgía", ["Georgia"]], ["AM", "Armenía", ["Armenia"]], ["AZ", "Aserbaídsjan", ["Azerbaijan"]]];const TEAM=[{"id": "einar", "n": "Einar Kári Ólafsson", "s": "Einar Kári", "c": "#ffcc33", "img": "myndir/einar.jpg"}, {"id": "snorri", "n": "Snorri Örvarsson", "s": "Snorri", "c": "#7fd4ff", "img": "myndir/snorri.jpg"}, {"id": "leon", "n": "Leon Mikael Elvarsson", "s": "Leon", "c": "#ff7a8a", "img": "myndir/leon.jpg"}];let V={einar:[],snorri:[],leon:[]};let who=TEAM[0].id;let GEO=[];
+const N2I={};EU.forEach(([k,n,al])=>al.forEach(a=>N2I[a]=k));const ISN=Object.fromEntries(EU.map(([k,n])=>[k,n]));
+const T=()=>TEAM.find(t=>t.id===who);
+function render(){
+ document.getElementById('tabs').innerHTML=TEAM.map(t=>`<button class="${t.id===who?'on':''}" data-id="${t.id}" style="--c:${t.c}">${t.s} (${(V[t.id]||[]).length})</button>`).join('');
+ const set=new Set(V[who]||[]);
+ document.getElementById('map').innerHTML=GEO.length?`<svg viewBox="0 0 800 700"><rect width="800" height="700" fill="#0b2a5c"/>${GEO.map(g=>`<path d="${g.d}" fill="${g.iso?(set.has(g.iso)?T().c:'#2a3a8f'):'#16236b'}" stroke="#0b1647" stroke-width=".7"${g.iso?` data-iso="${g.iso}"`:''}><title>${g.iso?ISN[g.iso]:g.name}</title></path>`).join('')}</svg>`:'<p style="padding:30px">Kortið hleðst ekki, en listinn virkar.</p>';
+ document.getElementById('list').innerHTML=[...EU].sort((a,b)=>a[1].localeCompare(b[1],'is')).map(([k,n])=>`<label><input type="checkbox" data-iso="${k}" ${set.has(k)?'checked':''}>${n}</label>`).join('');
+ document.getElementById('out').value=JSON.stringify({version:1,visited:V},null,2);
+}
+function toggle(iso){const a=V[who]||(V[who]=[]);const i=a.indexOf(iso);i<0?a.push(iso):a.splice(i,1);a.sort();render()}
+document.getElementById('tabs').onclick=e=>{const b=e.target.closest('button');if(b){who=b.dataset.id;render()}};
+document.getElementById('map').onclick=e=>{const iso=e.target.dataset&&e.target.dataset.iso;if(iso)toggle(iso)};
+document.getElementById('list').onchange=e=>{const iso=e.target.dataset.iso;if(iso)toggle(iso)};
+document.getElementById('copy').onclick=()=>{const o=document.getElementById('out');o.select();navigator.clipboard?navigator.clipboard.writeText(o.value):document.execCommand('copy');document.getElementById('copy').textContent='Afritað!'};
+fetch('visited.json',{cache:'no-store'}).then(r=>r.json()).then(j=>{V=Object.assign({einar:[],snorri:[],leon:[]},j.visited||{});render()}).catch(render);
+fetch('https://cdn.jsdelivr.net/npm/world-atlas@2.0.2/countries-50m.json').then(r=>r.json()).then(w=>{
+ const all=topojson.feature(w,w.objects.countries).features;
+ const proj=d3.geoAzimuthalEqualArea().rotate([-12,-53]).clipExtent([[0,0],[800,700]]);
+ proj.fitExtent([[10,10],[790,690]],{type:'Feature',geometry:{type:'MultiPoint',coordinates:[[-24,35],[40,35],[-10,71],[32,71],[45,45]]}});
+ const path=d3.geoPath(proj);GEO=all.map(f=>({iso:N2I[f.properties.name]||null,name:f.properties.name,d:path(f)})).filter(g=>g.d);render()}).catch(render);
+render();
+</script></body></html>
