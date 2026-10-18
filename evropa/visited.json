@@ -2,13 +2,40 @@
   "version": 1,
   "visited": {
     "einar": [
-      "IS"
-    ],
-    "snorri": [
-      "IS"
+      "GB",
+      "DK",
+      "FR",
+      "IS",
+      "IT",
+      "LT",
+      "LU",
+      "MC",
+      "ES",
+      "DE"
     ],
     "leon": [
-      "IS"
+      "AL",
+      "AT",
+      "GB",
+      "DK",
+      "FI",
+      "FR",
+      "GR",
+      "IS",
+      "IT",
+      "MK",
+      "PL",
+      "ES",
+      "SE",
+      "DE"
+    ],
+    "snorri": [
+      "DK",
+      "GR",
+      "IS",
+      "IT",
+      "PT",
+      "ES"
     ]
   }
 }
