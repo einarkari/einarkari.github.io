@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="is">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Einar Kári</title>
+<meta name="description" content="Verkefni Einars Kára Ólafssonar, fyrir skólann og í frítíma.">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,800&family=Newsreader:opsz,wght@6..72,400;6..72,500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0b1647;--ink:#f3efe6;--dim:#aab3d6;--gold:#ffcc33;--card:#16236b;--line:#3a4a9c}
+*{box-sizing:border-box;margin:0}
+body{background:var(--bg);color:var(--ink);font:18px/1.55 'Newsreader',Georgia,serif;min-height:100vh}
+h1,h2,h3{font-family:'Bricolage Grotesque',Arial,sans-serif;font-weight:800;letter-spacing:-.03em;line-height:1}
+main{max-width:920px;margin:0 auto;padding:72px 20px 60px}
+.kick{font:800 14px 'Bricolage Grotesque',Arial,sans-serif;color:var(--gold);text-transform:uppercase;letter-spacing:.08em}
+h1{font-size:clamp(56px,12vw,120px);margin:10px 0 16px}
+.lead{color:var(--dim);max-width:52ch}
+h2{font-size:clamp(26px,5vw,36px);margin:56px 0 18px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:18px}
+a.card{display:block;text-decoration:none;color:inherit;background:var(--card);border:1px solid var(--line);border-top:6px solid var(--c,var(--gold));border-radius:8px;padding:20px 22px;transition:transform .15s}
+a.card:hover,a.card:focus-visible{transform:translateY(-3px);outline:2px solid var(--gold)}
+.card h3{font-size:26px;margin:6px 0 8px}
+.meta{font-size:.82em;color:var(--dim)}
+.card p{font-size:.95em}
+.go{display:inline-block;margin-top:14px;font:800 15px 'Bricolage Grotesque',Arial,sans-serif;color:var(--gold);border-bottom:2px solid var(--gold)}
+.empty{color:var(--dim);font-style:italic;border:1px dashed var(--line);border-radius:8px;padding:18px 22px}
+footer{margin-top:70px;color:var(--dim);font-size:.85em}
+</style>
+</head>
+<body>
+<main>
+<div class="kick">Verkefnasafn</div>
+<h1>Einar Kári</h1>
+<p class="lead">Hér safna ég saman verkefnum sem ég hef gert, bæði fyrir skólann og í frítíma.</p>
+<h2>Skólaverkefni</h2>
+<div class="grid" id="school"></div>
+<h2>Eigin verkefni</h2>
+<div class="grid" id="private"></div>
+<footer>© Einar Kári Ólafsson</footer>
+</main>
+<script>
+/* Bæta nýju verkefni við: setja nýja línu í listann hér fyrir neðan. */
+const projects=[
+ {group:'school',title:'Evrópa',url:'evropa/',date:'Október 2026',course:'Sprettur V5 – Heimsálfur, 8. bekkur',text:'Þrívíddarflug um Evrópu: lönd, dýr, náttúra, trúarbrögð, menning, tungumál, stjórnarfar og atvinnuhættir. Hópverkefni með Leon Mikael Elvarssyni og Snorra Örvarssyni.',color:'#ffcc33'}
+];
+for(const g of ['school','private']){
+ const el=document.getElementById(g),list=projects.filter(p=>p.group===g);
+ el.innerHTML=list.length?list.map(p=>`<a class="card" href="${p.url}" style="--c:${p.color}"><div class="meta">${p.date} · ${p.course}</div><h3>${p.title}</h3><p>${p.text}</p><span class="go">Opna verkefni →</span></a>`).join(''):'<div class="empty">Ekkert hér ennþá. Kemur bráðum.</div>';
+}
+</script>
+</body>
+</html>
