@@ -41,7 +41,8 @@ footer{margin-top:70px;color:var(--dim);font-size:.85em}
 <script>
 /* Bæta nýju verkefni við: setja nýja línu í listann hér fyrir neðan. */
 const projects=[
- {group:'school',title:'Evrópa',url:'evropa/',date:'Október 2026',course:'Sprettur V5 – Heimsálfur, 8. bekkur',text:'Þrívíddarflug um Evrópu: lönd, dýr, náttúra, trúarbrögð, menning, tungumál, stjórnarfar og atvinnuhættir. Hópverkefni með Leon Mikael Elvarssyni og Snorra Örvarssyni.',color:'#ffcc33'}
+ {group:'school',title:'Evrópa',url:'evropa/',date:'Október 2026',course:'Sprettur V5 – Heimsálfur, 8. bekkur',text:'Þrívíddarflug um Evrópu: lönd, dýr, náttúra, trúarbrögð, menning, tungumál, stjórnarfar og atvinnuhættir. Hópverkefni með Leon Mikael Elvarssyni og Snorra Örvarssyni.',color:'#ffcc33'},
+ {group:'private',title:'Skólaborðið',url:'skolabord/',date:'Október 2026',course:'Vefapp fyrir bekkinn',text:'Stundaskrá bekkjarins og heimavinna úr Google Classroom á einu borði. Sýnir næsta tíma með niðurtalningu og öll verkefni raðað eftir skiladegi.',color:'#3461E8'}
 ];
 for(const g of ['school','private']){
  const el=document.getElementById(g),list=projects.filter(p=>p.group===g);
