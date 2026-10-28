@@ -49,6 +49,9 @@ if(!Array.isArray(S.hw))S.hw=[];
 const save=k=>store.set(k,S[k]);
 function applySkin(){document.documentElement.setAttribute("data-skin",S.skin==="dark"?"dark":"light");$("skinLight").setAttribute("aria-pressed",S.skin!=="dark");$("skinDark").setAttribute("aria-pressed",S.skin==="dark")}
 const ready=()=>!!S.profile;
+const GOOGLE_ON=!!GOOGLE_CLIENT_ID;
+const userEmail=()=>(S.google&&S.google.email)||(S.profile&&S.profile.email)||"";
+const crLink=()=>"https://classroom.google.com/a/not-turned-in/all"+(userEmail()?"?authuser="+encodeURIComponent(userEmail()):"");
 
 /* ---------- tími í Reykjavík ---------- */
 function now(){
@@ -146,7 +149,7 @@ async function syncClassroom(){
   await getToken();
   const ui=await gfetch("https://openidconnect.googleapis.com/v1/userinfo").catch(()=>null);
   if(ui&&ui.email){S.google={email:ui.email,name:ui.given_name||ui.name||""};save("google");
-    if(!S.profile){S.profile={name:S.google.name||ui.email.split("@")[0]};save("profile")}}
+    if(!S.profile){S.profile={name:S.google.name||ui.email.split("@")[0],email:ui.email};save("profile")}}
   const courses=await listAll("courses","courses",{studentId:"me",courseStates:"ACTIVE",pageSize:100});
   const N=now(),oldest=addDays(N.ymd,-60),items=[];
   await Promise.all(courses.map(async c=>{
@@ -257,7 +260,7 @@ function renderToday(){
   const op=openHw().slice(0,5);
   $("soon").innerHTML=op.length?op.map(h=>{const c=h.due&&h.due<N.ymd?"late":(h.due===N.ymd?"today":"");
     return `<div class="it"><i style="background:${colorFor(h.subj)}"></i><b>${esc(h.title)}</b><span class="due ${c}">${esc(dueText(h.due,N))}</span></div>`}).join("")
-    :`<div class="ov-empty">${S.google?"Engin heimavinna eftir. Vel gert!":'Engin heimavinna enn. <a href="#heimavinna">Tengja Classroom eða bæta við</a>'}</div>`;
+    :`<div class="ov-empty">${S.google?"Engin heimavinna eftir. Vel gert!":'Engin heimavinna enn. <a href="#heimavinna">Bæta við verkefni</a>'}</div>`;
 
   $("listTitle").textContent=`Dagskrá · ${DSH[S.sel]}`;
   const nextToday=isToday?day.find(x=>!isBrk(x.n)&&x.s>N.min):null;
@@ -317,7 +320,7 @@ function renderHw(){
   const wk=addDays(N.ymd,7),tmr=addDays(N.ymd,1);
   const lanes=[{k:"late",l:"Seint",f:h=>h.due&&h.due<N.ymd},{k:"today",l:"Í dag",f:h=>h.due===N.ymd},{k:"tm",l:"Á morgun",f:h=>h.due===tmr},{k:"week",l:"Næstu 7 dagar",f:h=>h.due&&h.due>tmr&&h.due<=wk},{k:"later",l:"Seinna",f:h=>!h.due||h.due>wk}];
   const box=$("lanes");
-  if(!open.length){box.style.display="block";box.innerHTML=`<div class="ov-empty">${S.google?"Þú átt enga heimavinnu eftir í Classroom.":"Engin heimavinna enn. Tengdu Classroom hér fyrir neðan eða skrifaðu verkefni inn sjálf/ur."}</div>`}
+  if(!open.length){box.style.display="block";box.innerHTML=`<div class="ov-empty">${S.google?"Þú átt enga heimavinnu eftir í Classroom.":"Engin heimavinna enn. Skrifaðu inn fyrsta verkefnið hér fyrir neðan."}</div>`}
   else{box.style.display="";box.innerHTML=lanes.map(ln=>{const items=open.filter(ln.f);
     return `<div class="lane${items.length&&ln.k==="late"?" late":""}"><header><span>${ln.l}</span><span class="num">${items.length}</span></header>${items.length?items.map(h=>`<div class="task"><input type="checkbox" id="o-${esc(h.id)}" data-id="${esc(h.id)}" aria-label="Klárað: ${esc(h.title)}"><label for="o-${esc(h.id)}">${esc(h.title)}<small><i style="background:${colorFor(h.subj)}"></i>${esc(h.subj||"Annað")}${ln.k==="week"||ln.k==="later"||ln.k==="late"?" · "+esc(dueText(h.due,N)):""}</small></label>${h.src==="classroom"?(h.link&&/^https:\/\/classroom\.google\.com\//.test(h.link)?`<a class="open" href="${esc(h.link)}" target="_blank" rel="noopener" aria-label="Opna ${esc(h.title)} í Classroom">Opna ↗</a>`:"<span></span>"):`<button class="x" type="button" data-del="${esc(h.id)}" aria-label="Eyða ${esc(h.title)}">×</button>`}</div>`).join(""):`<div class="none">Ekkert hér</div>`}</div>`}).join("")}
 
@@ -327,14 +330,19 @@ function renderHw(){
     $("crTag").textContent="Tengt";
     $("crBody").innerHTML=`<p class="muted" style="margin:0">Tengt sem <b style="color:var(--ink)">${esc(S.google.email)}</b>. Síðast sótt ${esc(whenText(S.lastSync))}.</p>
       <div class="sync-stats"><div><span>Úr Classroom</span><b class="num">${cr.length}</b></div><div><span>Eftir að skila</span><b class="num">${cr.filter(h=>!h.done).length}</b></div><div><span>Næstu 7 daga</span><b class="num">${cr.filter(h=>!h.done&&h.due&&h.due<=wk).length}</b></div></div>
-      <div class="row-btns"><button class="btn blue" type="button" id="crSync">Uppfæra úr Classroom</button><a class="btn ghost" href="https://classroom.google.com/a/not-turned-in/all?authuser=${encodeURIComponent(S.google.email)}" target="_blank" rel="noopener">Opna Classroom ↗</a></div>
+      <div class="row-btns"><button class="btn blue" type="button" id="crSync">Uppfæra úr Classroom</button><a class="btn ghost" href="${esc(crLink())}" target="_blank" rel="noopener">Opna Classroom ↗</a></div>
       <div id="crOut" aria-live="polite"></div>`;
-  }else{
+  }else if(GOOGLE_ON){
     $("crTag").textContent="Ekki tengt";
     $("crBody").innerHTML=`<p class="muted" style="margin:0">Skráðu þig inn með Google-aðganginum þínum í skólanum og verkefnin sem þú átt eftir að skila koma sjálfkrafa inn.</p>
-      <div class="row-btns"><button class="gbtn" type="button" id="crSync">${$("gLogin").innerHTML}</button></div><div id="crOut" aria-live="polite"></div>`;
+      <div class="row-btns"><button class="gbtn" type="button" id="crSync">${$("gLogin").innerHTML}</button><a class="btn ghost" href="${esc(crLink())}" target="_blank" rel="noopener">Opna Classroom ↗</a></div><div id="crOut" aria-live="polite"></div>`;
+  }else{
+    $("crTag").textContent=userEmail()||"Classroom";
+    $("crBody").innerHTML=`<p class="muted" style="margin:0">Opnaðu verkefnalistann þinn í Classroom og skrifaðu verkefnin inn hér, svo þau raðist eftir skiladegi. Classroom opnast á netfanginu sem þú skráðir þig inn með.</p>
+      <div class="row-btns"><a class="btn blue" href="${esc(crLink())}" target="_blank" rel="noopener">Opna verkefnin mín í Classroom ↗</a></div>`;
   }
-  $("crSync").onclick=async()=>{const out=$("crOut");$("crSync").disabled=true;out.innerHTML=`<div class="thinking">Sæki verkefnin úr Classroom…</div>`;
+  const cs=$("crSync");
+  if(cs)cs.onclick=async()=>{const out=$("crOut");cs.disabled=true;out.innerHTML=`<div class="thinking">Sæki verkefnin úr Classroom…</div>`;
     await runSync(m=>{const o=$("crOut");if(o)o.innerHTML=`<div class="notice bad"><p>${esc(m)}</p></div>`})};
 
   const sel=$("hwSubj"),keep=sel.value;
@@ -373,7 +381,11 @@ function renderWeek(){
 
 function renderSettings(){
   if(document.activeElement!==$("sName"))$("sName").value=S.profile.name||"";
-  if(S.google){
+  if(document.activeElement!==$("sEmail"))$("sEmail").value=S.profile.email||"";
+  if(!S.google&&!GOOGLE_ON){
+    $("gInfo").innerHTML=`<div class="kv"><span>Opnast á</span><b style="overflow-wrap:anywhere">${esc(userEmail()||"—")}</b></div><p class="muted" style="margin:8px 0 0">Borðið opnar Classroom á netfanginu þínu. Heimavinnuna skrifar þú inn undir Heimavinna.</p>`;
+    $("gBtns").innerHTML=`<a class="btn ghost" href="${esc(crLink())}" target="_blank" rel="noopener">Opna Classroom ↗</a>`;
+  }else if(S.google){
     $("gInfo").innerHTML=`<div class="kv"><span>Aðgangur</span><b style="overflow-wrap:anywhere">${esc(S.google.email)}</b></div><div class="kv"><span>Síðast sótt</span><b>${esc(whenText(S.lastSync))}</b></div>`;
     $("gBtns").innerHTML=`<button class="btn blue" type="button" id="setSync">Uppfæra úr Classroom</button><button class="btn ghost" type="button" id="setDisc">Aftengja Google</button>`;
     $("setSync").onclick=()=>{$("setSync").disabled=true;runSync(m=>toast(m))};
@@ -418,10 +430,9 @@ $("gLogin").onclick=async()=>{
     out.innerHTML=`<div class="notice bad" role="alert"><p>${esc(gErr(e))}</p></div>`;
   }finally{$("gLogin").disabled=false}
 };
-$("noGoogleToggle").onclick=()=>{const f=$("profForm");f.hidden=!f.hidden;$("noGoogleToggle").setAttribute("aria-expanded",String(!f.hidden));if(!f.hidden)$("pName").focus()};
 $("profForm").addEventListener("submit",e=>{
-  e.preventDefault();const name=$("pName").value.trim();if(!name)return;
-  S.profile={name};save("profile");S.onboarded=true;save("onboarded");location.hash="#idag";
+  e.preventDefault();const name=$("pName").value.trim(),email=$("pEmail").value.trim().toLowerCase();if(!name||!email)return;
+  S.profile={name,email};save("profile");S.onboarded=true;save("onboarded");location.hash="#idag";
 });
 $("onbDone").onclick=()=>{S.onboarded=true;S.onboarding=false;save("onboarded");location.hash="#idag";renderRoute()};
 
@@ -474,7 +485,7 @@ $("addForm").addEventListener("submit",e=>{
   S.hw.push({id:uid(),title:t,subj:$("hwSubj").value,due:$("hwDue").value||"",done:false,created:Date.now(),src:"hand"});
   save("hw");$("hwTitle").value="";toast("Verkefni bætt við");renderHw();
 });
-$("setProf").addEventListener("submit",e=>{e.preventDefault();const name=$("sName").value.trim();if(!name)return;S.profile={name};save("profile");toast("Vistað");renderRoute()});
+$("setProf").addEventListener("submit",e=>{e.preventDefault();const name=$("sName").value.trim(),email=$("sEmail").value.trim().toLowerCase();if(!name||!email)return;S.profile={name,email};save("profile");toast("Vistað");renderRoute()});
 $("skinLight").onclick=()=>{S.skin="light";save("skin");applySkin()};
 $("skinDark").onclick=()=>{S.skin="dark";save("skin");applySkin()};
 function resetIdle(){$("resetBox").innerHTML=`<button class="btn ghost" type="button" id="resetBtn">Eyða öllu og skrá út</button>`;$("resetBtn").onclick=resetAsk}
@@ -482,12 +493,13 @@ function resetAsk(){
   $("resetBox").innerHTML=`<div class="notice bad" style="width:100%"><p>Ertu viss? Þetta eyðir nafninu þínu, Google-tengingunni og allri heimavinnu úr þessum vafra.</p><div class="row-btns"><button class="btn orange" type="button" id="resetYes">Já, eyða öllu</button><button class="btn ghost" type="button" id="resetNo">Hætta við</button></div></div>`;
   $("resetYes").onclick=()=>{try{if(token&&gisReady())google.accounts.oauth2.revoke(token,()=>{})}catch(e){}
     token=null;store.clear();S.profile=null;S.google=null;S.hw=[];S.lastSync=null;S.onboarded=false;S.onboarding=false;S.skin="light";S.sel=null;applySkin();resetIdle();
-    $("pName").value="";$("loginOut").innerHTML="";location.hash="#forsida";renderRoute()};
+    $("pName").value="";$("pEmail").value="";$("loginOut").innerHTML="";location.hash="#forsida";renderRoute()};
   $("resetNo").onclick=resetIdle;
 }
 $("resetBtn").onclick=resetAsk;
 
 /* ---------- ræsing ---------- */
+if(!GOOGLE_ON)document.querySelectorAll("[data-google]").forEach(el=>el.hidden=true);
 applySkin();renderRoute();
 setInterval(()=>{if(["idag","heimavinna","vikan"].includes(route)&&!syncing)renderRoute()},30000);
 document.addEventListener("visibilitychange",()=>{if(!document.hidden&&APP.includes(route))renderRoute()});

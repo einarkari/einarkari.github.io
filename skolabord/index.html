@@ -27,9 +27,9 @@
     <div>
       <div class="eyebrow">Fyrir bekkinn okkar · stundaskrá og heimavinna</div>
       <h1>Skóladagurinn á einu borði.</h1>
-      <p class="lead">Sjáðu hvaða tími er næstur og hvað þú átt eftir að gera. Skráðu þig inn með Google og heimavinnan þín kemur beint úr Classroom.</p>
+      <p class="lead">Sjáðu hvaða tími er næstur og hvað þú átt eftir að gera. Þú skráir þig inn með netfanginu þínu í skólanum, ekkert lykilorð.</p>
       <div class="row-btns">
-        <a class="btn orange" href="#byrja" data-start>Skrá inn með Google <span aria-hidden="true">›</span></a>
+        <a class="btn orange" href="#byrja" data-start>Skrá inn <span aria-hidden="true">›</span></a>
         <a class="btn ghost" href="#hvernig">Sjá hvernig það virkar</a>
       </div>
     </div>
@@ -63,7 +63,7 @@
     <h2>Það sem borðið gerir</h2>
     <div class="feat">
       <div class="card"><span class="num big">→</span><h3>Næsti tími</h3><p>Hvað er í gangi núna, hvað kemur næst og hvað eru margar mínútur þangað til.</p></div>
-      <div class="card"><span class="num big">14</span><h3>Heimavinna</h3><p>Öll verkefni sem þú átt eftir að skila í Classroom, raðað eftir skiladegi.</p></div>
+      <div class="card"><span class="num big">14</span><h3>Heimavinna</h3><p>Öll verkefni sem þú átt eftir, raðað eftir skiladegi: seint, í dag, á morgun og næstu 14 dagar.</p></div>
       <div class="card"><span class="num big">5</span><h3>Vikan</h3><p>Stundaskrá bekkjarins fyrir mánudag til föstudags, og hvað við erum marga tíma í hverju fagi.</p></div>
     </div>
   </section>
@@ -71,17 +71,17 @@
   <section class="sect" id="hvernig">
     <h2>Hvernig virkar það</h2>
     <div class="steps">
-      <div class="card"><span class="n">1</span><h3>Skráðu þig inn með Google</h3><p>Þú skráir þig inn í glugga frá Google sjálfu, með skólaaðganginum þínum.</p></div>
-      <div class="card"><span class="n">2</span><h3>Leyfðu lestur á Classroom</h3><p>Google spyr hvort borðið megi lesa námskeiðin þín og verkefnin. Það getur bara lesið, ekki breytt neinu.</p></div>
-      <div class="card"><span class="n">3</span><h3>Heimavinnan birtist</h3><p>Verkefni sem þú átt eftir að skila raðast eftir skiladegi. Stundaskrá bekkjarins er þegar inni.</p></div>
+      <div class="card"><span class="n">1</span><h3>Skráðu þig inn</h3><p>Fornafnið þitt og netfangið þitt í skólanum. Ekkert lykilorð.</p></div>
+      <div class="card"><span class="n">2</span><h3>Skrifaðu inn heimavinnuna</h3><p>Opnaðu verkefnin þín í Classroom beint af borðinu og skrifaðu þau inn. Þau raðast eftir skiladegi.</p></div>
+      <div class="card"><span class="n">3</span><h3>Fylgstu með deginum</h3><p>Stundaskrá bekkjarins er þegar inni: næsti tími, niðurtalning og vikan öll.</p></div>
     </div>
   </section>
 
   <section class="card priv" id="personuvernd">
     <div class="shield" aria-hidden="true"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="var(--ok)" stroke-width="1.8"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/><path d="M9 12l2 2 4-4"/></svg></div>
     <div>
-      <h2 style="font-size:20px">Borðið sér aldrei lykilorðið þitt</h2>
-      <p>Þú skráir þig inn hjá Google, og borðið fær bara leyfi til að lesa námskeiðin þín og verkefnin þín. Ekkert er sent á netþjón: heimavinnan er geymd í vafranum þínum og enginn annar í bekknum sér hana. Þú getur aftengt hvenær sem er undir Stillingar.</p>
+      <h2 style="font-size:20px">Borðið biður aldrei um lykilorð</h2>
+      <p>Nafnið þitt, netfangið og heimavinnan eru bara geymd í vafranum þínum og eru ekki send neitt annað, svo enginn annar í bekknum sér þau. Þú getur eytt öllu hvenær sem er undir Stillingar.</p>
     </div>
     <a class="btn orange" href="#byrja" data-start>Skrá inn</a>
   </section>
@@ -95,24 +95,25 @@
     <div class="spacer"></div>
     <a class="btn ghost sm" href="#forsida">Til baka</a>
   </header>
-  <ol class="stepper two" aria-label="Skref">
+  <ol class="stepper two" aria-label="Skref" data-google>
     <li id="st1"><span>1</span>Innskráning</li>
     <li id="st2"><span>2</span>Heimavinna</li>
   </ol>
 
   <section class="card" id="onb1">
     <h2>Skráðu þig inn</h2>
-    <p class="lead">Notaðu Google-aðganginn þinn í skólanum. Innskráningin fer fram í glugga frá Google, og borðið fær aðeins að lesa Classroom.</p>
+    <p class="lead">Skrifaðu fornafnið þitt og netfangið þitt í skólanum. Ekkert lykilorð þarf, og borðið man þig í þessum vafra.</p>
+    <form id="profForm" class="grid2" autocomplete="on">
+      <label class="field"><span>Fornafn</span><input id="pName" name="given-name" autocomplete="given-name" required maxlength="40"></label>
+      <label class="field"><span>Netfang í skólanum</span><input id="pEmail" type="email" name="email" autocomplete="email" required maxlength="120" placeholder="nafn@skoli.is"><small>Notað til að opna Classroom á réttum aðgangi.</small></label>
+      <div class="row-btns" style="grid-column:1/-1"><button class="btn blue" type="submit">Skrá inn <span aria-hidden="true">›</span></button></div>
+    </form>
+    <div data-google style="border-top:1px solid var(--line);padding-top:14px;display:flex;flex-direction:column;gap:10px">
+    <span class="muted" style="font-size:14px">Eða sæktu heimavinnuna beint úr Classroom:</span>
     <div class="row-btns">
       <button class="gbtn" id="gLogin" type="button"><svg width="20" height="20" viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>Skrá inn með Google</button>
     </div>
     <div id="loginOut" aria-live="polite"></div>
-    <div style="border-top:1px solid var(--line);padding-top:14px">
-      <button class="linkbtn" id="noGoogleToggle" type="button" aria-expanded="false">Halda áfram án Google</button>
-      <form id="profForm" class="grid2" hidden style="margin-top:12px" autocomplete="on">
-        <label class="field"><span>Fornafn</span><input id="pName" autocomplete="given-name" required maxlength="40"><small>Þá skrifar þú heimavinnuna inn sjálf/ur.</small></label>
-        <div class="row-btns" style="align-self:end"><button class="btn blue" type="submit">Áfram <span aria-hidden="true">›</span></button></div>
-      </form>
     </div>
   </section>
 
@@ -247,12 +248,13 @@
       <section class="card">
         <h2>Prófíll</h2>
         <form id="setProf" class="grid2" autocomplete="on">
-          <label class="field"><span>Nafn á borðinu</span><input id="sName" required maxlength="40" autocomplete="given-name"></label>
-          <div class="row-btns" style="align-self:end"><button class="btn blue" type="submit">Vista</button></div>
+          <label class="field"><span>Fornafn</span><input id="sName" required maxlength="40" autocomplete="given-name"></label>
+          <label class="field"><span>Netfang í skólanum</span><input id="sEmail" type="email" required maxlength="120" autocomplete="email" placeholder="nafn@skoli.is"></label>
+          <div class="row-btns" style="grid-column:1/-1"><button class="btn blue" type="submit">Vista</button></div>
         </form>
       </section>
       <section class="card">
-        <h2>Google-aðgangur</h2>
+        <h2>Google Classroom</h2>
         <div id="gInfo"></div>
         <div class="row-btns" id="gBtns"></div>
       </section>
