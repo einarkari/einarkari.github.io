@@ -1,0 +1,438 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow, noarchive">
+<meta name="referrer" content="no-referrer">
+<meta name="theme-color" content="#010509">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Jarvis">
+<title>Jarvis</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23010509'/%3E%3Ccircle cx='32' cy='32' r='20' fill='none' stroke='%2362e3ff' stroke-width='3' stroke-dasharray='22 8'/%3E%3Ccircle cx='32' cy='32' r='9' fill='%2362e3ff'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@300;400;500&family=Share+Tech+Mono&display=swap">
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #010509; --ink: #e3f8ff; --ink-2: #93b6c4; --ink-3: #557482;
+    --cyan: #62e3ff; --cyan-2: rgba(98, 227, 255, .6); --line: rgba(98, 227, 255, .24);
+    --glass: rgba(2, 16, 24, .74); --warn: #ff9b8a;
+    --ui: "Chakra Petch", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --mono: "Share Tech Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body { background: var(--bg); color: var(--ink); font-family: var(--ui); overflow: hidden; -webkit-font-smoothing: antialiased;
+    -webkit-tap-highlight-color: transparent; overscroll-behavior: none; }
+  [hidden] { display: none !important; }
+  #stage { position: fixed; inset: 0; width: 100%; height: 100%; display: block; pointer-events: none; }
+  .screen { position: fixed; inset: 0; display: flex; flex-direction: column;
+    padding: env(safe-area-inset-top, 0px) max(16px, env(safe-area-inset-right, 0px)) env(safe-area-inset-bottom, 0px) max(16px, env(safe-area-inset-left, 0px)); }
+
+  .bar { flex: none; height: 52px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .brand { display: flex; align-items: center; gap: 10px; min-width: 0; overflow: hidden; white-space: nowrap;
+    font-family: var(--mono); font-size: 11px; letter-spacing: .3em; text-transform: uppercase; color: var(--ink-3); }
+  .brand b { font-weight: 400; color: var(--ink-2); }
+  .dot { flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--cyan); box-shadow: 0 0 10px var(--cyan); }
+  .dot[data-s="idle"] { background: var(--ink-3); box-shadow: none; }
+  .dot[data-s="connecting"] { animation: blink 1s steps(2, start) infinite; }
+  @keyframes blink { 50% { opacity: .25; } }
+  .tools { display: flex; gap: 4px; }
+  .icon-btn { width: 40px; height: 40px; padding: 0; display: grid; place-items: center; border-radius: 50%; border: 1px solid transparent;
+    background: none; color: var(--ink-2); cursor: pointer; }
+  .icon-btn:hover { border-color: var(--line); color: var(--ink); }
+  .icon-btn svg { width: 20px; height: 20px; }
+  button:focus-visible, input:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+
+  #core { flex: 1 1 auto; min-height: 120px; width: 100%; margin: 0; padding: 0; border: 0; background: none; cursor: pointer; border-radius: 24px; }
+  #core:focus { outline: none; }
+  .talk { flex: none; min-height: clamp(6em, 24vh, 10em); display: flex; flex-direction: column; align-items: center; gap: 10px;
+    text-align: center; padding-block: 2px 18px; }
+  .you { max-width: min(100%, 60ch); min-height: 1.3em; font-family: var(--mono); font-size: 12px; letter-spacing: .06em; color: var(--ink-3);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .you:not(:empty)::before { content: "› "; color: var(--cyan-2); }
+  .say { max-width: min(100%, 34em); max-height: 5.7em; overflow-y: auto; scrollbar-width: none; font-size: clamp(18px, 2.4vw, 24px);
+    line-height: 1.42; color: var(--ink); text-wrap: pretty; text-shadow: 0 0 18px rgba(98, 227, 255, .18); transition: opacity .9s, color .9s; }
+  .say::-webkit-scrollbar { display: none; }
+  .say.soft { color: var(--ink-2); font-weight: 300; }
+  .say.dim { opacity: .4; }
+  .hint { font-family: var(--mono); font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: var(--ink-3); min-height: 1.4em; }
+
+  /* lock screen */
+  #lock { align-items: center; justify-content: center; }
+  .panel { width: min(100%, 360px); display: flex; flex-direction: column; align-items: stretch; gap: 14px; padding: 28px 24px 24px;
+    border: 1px solid var(--line); border-radius: 22px; background: var(--glass); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, .6), inset 0 0 30px rgba(98, 227, 255, .05); }
+  .panel h1 { margin: 0 0 4px; text-align: center; font-family: var(--mono); font-weight: 400; font-size: 13px; letter-spacing: .4em; color: var(--ink-2); }
+  .panel p { margin: 0; text-align: center; color: var(--ink-3); font-size: 14px; }
+  .field { display: flex; gap: 8px; }
+  .field input { flex: 1; min-width: 0; height: 48px; padding: 0 16px; border-radius: 14px; border: 1px solid var(--line); background: rgba(0, 0, 0, .35);
+    color: var(--ink); font: 500 20px/1 var(--mono); letter-spacing: .3em; text-align: center; caret-color: var(--cyan); }
+  .btn { height: 48px; padding: 0 18px; border-radius: 14px; border: 1px solid var(--line); background: rgba(98, 227, 255, .12); color: var(--cyan);
+    font: 500 15px var(--ui); letter-spacing: .04em; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 10px; }
+  .btn:hover { background: rgba(98, 227, 255, .2); }
+  .btn[disabled] { opacity: .5; cursor: default; }
+  .btn.big { height: 56px; font-size: 16px; }
+  .btn svg { width: 22px; height: 22px; }
+  .or { display: flex; align-items: center; gap: 10px; color: var(--ink-3); font-family: var(--mono); font-size: 11px; letter-spacing: .2em; }
+  .or::before, .or::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+  .err { min-height: 1.3em; text-align: center; color: var(--warn); font-size: 14px; }
+  .toast { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); max-width: calc(100% - 32px);
+    padding: 12px 18px; border-radius: 14px; border: 1px solid var(--line); background: var(--glass); color: var(--ink); font-size: 14px;
+    -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+</style>
+</head>
+<body>
+<canvas id="stage" aria-hidden="true"></canvas>
+
+<!-- Lock -->
+<section class="screen" id="lock" aria-label="Unlock Jarvis">
+  <form class="panel" id="lockForm" autocomplete="off">
+    <h1>J.A.R.V.I.S.</h1>
+    <p id="lockMsg">Identify yourself, sir.</p>
+    <button class="btn big" type="button" id="pkLogin" hidden>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M12 11v4M8.5 8.6A5 5 0 0 1 17 12v1.5M7 12a5 5 0 0 1 .3-1.7M7 15v-1M10 21c1-2 2-4.5 2-6M14.5 20c.5-1.5.9-3.2 1-5M5 18c.6-1 1-2.3 1-3.8V12a6 6 0 0 1 9-5.2"/></svg>
+      Unlock with Touch ID
+    </button>
+    <div class="or" id="orLine" hidden>or</div>
+    <label class="sr" for="pw">Password</label>
+    <div class="field">
+      <input id="pw" type="password" inputmode="numeric" autocomplete="current-password" placeholder="••••••" maxlength="40">
+      <button class="btn" type="submit" id="pwBtn">Unlock</button>
+    </div>
+    <div class="err" id="lockErr" role="alert"></div>
+  </form>
+</section>
+
+<!-- Jarvis -->
+<section class="screen" id="main" hidden aria-label="Jarvis">
+  <header class="bar">
+    <div class="brand"><span class="dot" id="dot" data-s="idle"></span><b>J.A.R.V.I.S.</b><span id="status">Standing by</span></div>
+    <div class="tools">
+      <button class="icon-btn" id="pkAdd" type="button" title="Set up Touch ID" aria-label="Set up Touch ID login" hidden>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M12 11v4M8.5 8.6A5 5 0 0 1 17 12v1.5M7 12a5 5 0 0 1 .3-1.7M7 15v-1M10 21c1-2 2-4.5 2-6M14.5 20c.5-1.5.9-3.2 1-5M5 18c.6-1 1-2.3 1-3.8V12a6 6 0 0 1 9-5.2"/></svg>
+      </button>
+      <button class="icon-btn" id="lockBtn" type="button" title="Lock" aria-label="Lock Jarvis">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
+      </button>
+    </div>
+  </header>
+  <button id="core" type="button" aria-label="Talk to Jarvis"></button>
+  <div class="talk">
+    <div class="you" id="you"></div>
+    <div class="say soft" id="say" aria-live="polite"></div>
+    <div class="hint" id="hint">Tap the core to talk</div>
+  </div>
+</section>
+<div class="toast" id="toast" role="status" hidden></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@elevenlabs/client@1.28.0/dist/lib.iife.js"></script>
+<script>
+(function () {
+  "use strict";
+  /* Agent settings, encrypted with a key derived from the password (PBKDF2-SHA256 → AES-GCM). */
+  var VAULT = {"it":600000,"salt":"aFTFK2vArWolRGPSNJ9osA==","iv":"VMtnrdo5mGgwQ9dZ","ct":"2z0xeCmtfNr88XaLwiBVXOdFlrbk8ClmuDuJj20E9wPuz8fYFev3QkglqgP/sBaxHDNHzWytPnFnPgOUG2tVMWlzefnH3RB92/iurCCtIA=="};
+  var K_CFG = "jarvis.cfg", K_PK = "jarvis.passkey", K_SESSION = "jarvis.open";
+
+  function $(s) { return document.querySelector(s); }
+  var store = {
+    get: function (k) { try { return JSON.parse(localStorage.getItem(k) || "null"); } catch (e) { return null; } },
+    set: function (k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} },
+    del: function (k) { try { localStorage.removeItem(k); } catch (e) {} }
+  };
+  function b64(buf) { return btoa(String.fromCharCode.apply(null, new Uint8Array(buf))); }
+  function unb64(s) { return Uint8Array.from(atob(s), function (c) { return c.charCodeAt(0); }); }
+  function b64url(buf) { return b64(buf).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, ""); }
+  function unb64url(s) { s = s.replace(/-/g, "+").replace(/_/g, "/"); while (s.length % 4) s += "="; return unb64(s); }
+  function rand(n) { var a = new Uint8Array(n); crypto.getRandomValues(a); return a; }
+  var toastT = 0;
+  function toast(msg) { var t = $("#toast"); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(function () { t.hidden = true; }, 4200); }
+
+  var cfg = null, state = "locked";
+
+  /* ---------------- password ---------------- */
+  async function openVault(pw) {
+    var base = await crypto.subtle.importKey("raw", new TextEncoder().encode(pw), "PBKDF2", false, ["deriveKey"]);
+    var key = await crypto.subtle.deriveKey({ name: "PBKDF2", salt: unb64(VAULT.salt), iterations: VAULT.it, hash: "SHA-256" }, base, { name: "AES-GCM", length: 256 }, false, ["decrypt"]);
+    var pt = await crypto.subtle.decrypt({ name: "AES-GCM", iv: unb64(VAULT.iv) }, key, unb64(VAULT.ct));
+    return JSON.parse(new TextDecoder().decode(pt));
+  }
+
+  /* ---------------- passkey (Touch ID / Face ID) ---------------- */
+  function passkeySupported() { return !!(window.PublicKeyCredential && navigator.credentials && window.isSecureContext); }
+  async function platformAvailable() {
+    try { return passkeySupported() && await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable(); } catch (e) { return false; }
+  }
+  async function registerPasskey() {
+    var cred = await navigator.credentials.create({ publicKey: {
+      challenge: rand(32),
+      rp: { name: "Jarvis", id: location.hostname },
+      user: { id: rand(16), name: "einar@jarvis", displayName: "Einar · Jarvis" },
+      pubKeyCredParams: [{ type: "public-key", alg: -7 }, { type: "public-key", alg: -257 }],
+      authenticatorSelection: { authenticatorAttachment: "platform", residentKey: "preferred", userVerification: "required" },
+      attestation: "none", timeout: 60000
+    } });
+    var r = cred.response, pk = null, alg = -7;
+    try { if (r.getPublicKey) pk = r.getPublicKey(); if (r.getPublicKeyAlgorithm) alg = r.getPublicKeyAlgorithm(); } catch (e) {}
+    store.set(K_PK, { id: b64url(cred.rawId), pk: pk ? b64(pk) : null, alg: alg, at: new Date().toISOString() });
+  }
+  function derToRaw(der) {
+    var d = new Uint8Array(der), i = 2;
+    if (d[1] & 0x80) i += d[1] & 0x7f;
+    function int() { i++; var len = d[i++], v = d.slice(i, i + len); i += len; while (v.length > 32 && v[0] === 0) v = v.slice(1); var o = new Uint8Array(32); o.set(v, 32 - v.length); return o; }
+    var r = int(), s = int(), out = new Uint8Array(64); out.set(r, 0); out.set(s, 32); return out;
+  }
+  async function passkeyLogin() {
+    var saved = store.get(K_PK);
+    if (!saved) throw new Error("no passkey");
+    var challenge = rand(32);
+    var a = await navigator.credentials.get({ publicKey: {
+      challenge: challenge, rpId: location.hostname, timeout: 60000, userVerification: "required",
+      allowCredentials: [{ type: "public-key", id: unb64url(saved.id) }]
+    } });
+    var r = a.response;
+    var cd = JSON.parse(new TextDecoder().decode(r.clientDataJSON));
+    if (cd.type !== "webauthn.get" || cd.challenge !== b64url(challenge) || cd.origin !== location.origin) throw new Error("bad response");
+    var ad = new Uint8Array(r.authenticatorData);
+    if (!(ad[32] & 0x04)) throw new Error("not verified");
+    if (saved.pk) {
+      var hash = new Uint8Array(await crypto.subtle.digest("SHA-256", r.clientDataJSON));
+      var data = new Uint8Array(ad.length + hash.length); data.set(ad, 0); data.set(hash, ad.length);
+      var ok;
+      if (saved.alg === -257) {
+        var rk = await crypto.subtle.importKey("spki", unb64(saved.pk), { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" }, false, ["verify"]);
+        ok = await crypto.subtle.verify("RSASSA-PKCS1-v1_5", rk, r.signature, data);
+      } else {
+        var ek = await crypto.subtle.importKey("spki", unb64(saved.pk), { name: "ECDSA", namedCurve: "P-256" }, false, ["verify"]);
+        ok = await crypto.subtle.verify({ name: "ECDSA", hash: "SHA-256" }, ek, derToRaw(r.signature), data);
+      }
+      if (!ok) throw new Error("signature");
+    }
+  }
+
+  /* ---------------- lock / unlock ---------------- */
+  async function showLock(msg) {
+    state = "locked"; $("#main").hidden = true; $("#lock").hidden = false;
+    $("#lockMsg").textContent = msg || "Identify yourself, sir.";
+    $("#lockErr").textContent = "";
+    var canPk = !!store.get(K_PK) && !!store.get(K_CFG) && passkeySupported();
+    $("#pkLogin").hidden = !canPk; $("#orLine").hidden = !canPk;
+    setOrb("locked");
+    if (!canPk) setTimeout(function () { $("#pw").focus(); }, 50);
+  }
+  async function enter(c) {
+    cfg = c; store.set(K_CFG, c);
+    try { sessionStorage.setItem(K_SESSION, "1"); } catch (e) {}
+    $("#lock").hidden = true; $("#main").hidden = false; $("#pw").value = "";
+    $("#pkAdd").hidden = !!store.get(K_PK) || !(await platformAvailable());
+    setStatus("idle");
+    greet();
+  }
+  $("#lockForm").addEventListener("submit", async function (e) {
+    e.preventDefault();
+    var pw = $("#pw").value.trim(); if (!pw) return;
+    $("#pwBtn").disabled = true; $("#lockErr").textContent = "";
+    try { await enter(await openVault(pw)); maybeOfferPasskey(); }
+    catch (err) { $("#lockErr").textContent = "That isn't right, sir."; $("#pw").select(); }
+    finally { $("#pwBtn").disabled = false; }
+  });
+  $("#pkLogin").addEventListener("click", async function () {
+    $("#lockErr").textContent = "";
+    try { await passkeyLogin(); await enter(store.get(K_CFG)); }
+    catch (err) { $("#lockErr").textContent = err && err.name === "NotAllowedError" ? "Touch ID was cancelled. Try again or use the password." : "Touch ID didn't work. Use the password."; }
+  });
+  async function addPasskey() {
+    try { await registerPasskey(); $("#pkAdd").hidden = true; toast("Touch ID is set up. Next time just tap Unlock with Touch ID."); }
+    catch (err) { toast(err && err.name === "NotAllowedError" ? "Touch ID setup was cancelled." : "This device couldn't create a passkey."); }
+  }
+  $("#pkAdd").addEventListener("click", addPasskey);
+  function maybeOfferPasskey() { if (!$("#pkAdd").hidden) toast("Tip: tap the fingerprint at the top right to log in with Touch ID next time."); }
+  $("#lockBtn").addEventListener("click", function () { stopTalk(); try { sessionStorage.removeItem(K_SESSION); } catch (e) {} showLock("Locked."); });
+
+  /* ---------------- conversation (ElevenLabs) ---------------- */
+  var conv = null, mode = "listening", wakeLock = null;
+  var sayEl = $("#say"), youEl = $("#you"), hintEl = $("#hint"), fadeT = 0;
+  function setStatus(s) {
+    state = s;
+    $("#dot").setAttribute("data-s", s);
+    $("#status").textContent = { idle: "Standing by", connecting: "Connecting", listening: "Listening", speaking: "Speaking" }[s] || s;
+    $("#core").setAttribute("aria-label", s === "idle" ? "Talk to Jarvis" : "End conversation");
+    hintEl.textContent = s === "idle" ? "Tap the core to talk" : s === "connecting" ? "" : "Tap the core to finish";
+    setOrb(s);
+  }
+  function say(text, soft) { clearTimeout(fadeT); sayEl.classList.toggle("soft", !!soft); sayEl.classList.remove("dim"); sayEl.textContent = text; sayEl.scrollTop = sayEl.scrollHeight; }
+  function fadeLater() { clearTimeout(fadeT); fadeT = setTimeout(function () { sayEl.classList.add("dim"); youEl.textContent = ""; }, 15000); }
+  function greet() {
+    var h = +new Intl.DateTimeFormat("en-GB", { timeZone: "Atlantic/Reykjavik", hour: "numeric", hourCycle: "h23" }).format(new Date());
+    var p = h >= 5 && h < 12 ? "Good morning" : h < 18 && h >= 12 ? "Good afternoon" : "Good evening";
+    youEl.textContent = ""; say(p + ", " + ((cfg && cfg.name) || "sir") + ".", true);
+  }
+  async function startTalk() {
+    if (conv || state === "connecting") return;
+    if (!window.ElevenLabsClient || !window.ElevenLabsClient.Conversation) { say("My voice systems didn't load. Check the connection and reload, sir.", true); return; }
+    setStatus("connecting"); say("", true); youEl.textContent = "";
+    try {
+      var s = await navigator.mediaDevices.getUserMedia({ audio: true });
+      s.getTracks().forEach(function (t) { t.stop(); });
+    } catch (e) {
+      setStatus("idle"); say("I need the microphone to hear you, sir. Allow it in your browser settings and try again.", true); return;
+    }
+    try {
+      conv = await window.ElevenLabsClient.Conversation.startSession({
+        agentId: cfg.agentId,
+        connectionType: "websocket",
+        onConnect: function () { setStatus("listening"); },
+        onDisconnect: function () { conv = null; setStatus("idle"); fadeLater(); releaseWake(); },
+        onError: function (m) { console.warn("Jarvis error", m); },
+        onModeChange: function (m) { mode = m && m.mode; if (conv) setStatus(mode === "speaking" ? "speaking" : "listening"); },
+        onMessage: function (m) {
+          if (!m || !m.message) return;
+          var role = m.role || (m.source === "ai" ? "agent" : "user");
+          if (role === "user") youEl.textContent = m.message; else say(m.message);
+        }
+      });
+      holdWake();
+    } catch (e) {
+      conv = null; setStatus("idle");
+      say("I couldn't reach my voice line just now, sir. Try again in a moment.", true);
+      console.warn(e);
+    }
+  }
+  async function stopTalk() { var c = conv; conv = null; if (c) { try { await c.endSession(); } catch (e) {} } setStatus(state === "locked" ? "locked" : "idle"); releaseWake(); }
+  async function holdWake() { try { if ("wakeLock" in navigator) wakeLock = await navigator.wakeLock.request("screen"); } catch (e) {} }
+  function releaseWake() { try { if (wakeLock) wakeLock.release(); } catch (e) {} wakeLock = null; }
+  $("#core").addEventListener("click", function () { if (state === "idle") startTalk(); else if (state !== "connecting") stopTalk(); });
+  document.addEventListener("keydown", function (e) {
+    if (state === "locked") return;
+    if (e.key === "Escape" && conv) stopTalk();
+    if ((e.key === " " || e.key === "Enter") && document.activeElement === document.body) { e.preventDefault(); $("#core").click(); }
+  });
+  function voiceLevel() {
+    if (!conv) return 0;
+    try { return Math.min(1, (mode === "speaking" ? conv.getOutputVolume() : conv.getInputVolume() * 0.7) * 2.2); } catch (e) { return 0; }
+  }
+
+  /* ---------------- the core (canvas) ---------------- */
+  var orbState = "locked";
+  function setOrb(s) { orbState = s; Orb.kick(); }
+  var Orb = (function () {
+    var cv = $("#stage"), ctx = cv.getContext("2d"), core = $("#core");
+    var reduce = { matches: false };
+    try { reduce = matchMedia("(prefers-reduced-motion: reduce)"); } catch (e) {}
+    var W = 0, H = 0, DPR = 1, cx = 0, cy = 0, R = 100, N = 0, pts = null, sz = null, sprites = null, dust = [];
+    var t = 0, last = 0, lastDraw = 0, raf = 0, rotY = 0, energy = 0.1, think = 0, listen = 0, speak = 0, env = 0;
+    function sprite(r, g, b) {
+      var s = document.createElement("canvas"), n = 32; s.width = s.height = n;
+      var c = s.getContext("2d"), gr = c.createRadialGradient(n / 2, n / 2, 0, n / 2, n / 2, n / 2);
+      gr.addColorStop(0, "rgba(" + r + "," + g + "," + b + ",1)"); gr.addColorStop(0.2, "rgba(" + r + "," + g + "," + b + ",.8)");
+      gr.addColorStop(0.5, "rgba(" + r + "," + g + "," + b + ",.16)"); gr.addColorStop(1, "rgba(" + r + "," + g + "," + b + ",0)");
+      c.fillStyle = gr; c.fillRect(0, 0, n, n); return s;
+    }
+    function build() {
+      N = W * H < 520000 ? 520 : 760; pts = new Float32Array(N * 3); sz = new Float32Array(N);
+      var ga = Math.PI * (3 - Math.sqrt(5));
+      for (var i = 0; i < N; i++) {
+        var y = 1 - (i + 0.5) * 2 / N, r = Math.sqrt(1 - y * y), th = i * ga + (Math.random() - 0.5) * 0.35, j = 1 + (Math.random() - 0.5) * 0.06;
+        pts[i * 3] = Math.cos(th) * r * j; pts[i * 3 + 1] = y * j; pts[i * 3 + 2] = Math.sin(th) * r * j; sz[i] = 0.7 + Math.random() * 0.6;
+      }
+      if (!sprites) sprites = [sprite(36, 110, 255), sprite(90, 214, 255), sprite(214, 249, 255)];
+      dust = []; for (var k = 0; k < 46; k++) dust.push({ x: Math.random(), y: Math.random(), s: 0.4 + Math.random() * 1.1, v: 0.004 + Math.random() * 0.012, a: 0.05 + Math.random() * 0.22 });
+    }
+    function measure() {
+      DPR = Math.min(window.devicePixelRatio || 1, 2); W = innerWidth; H = innerHeight;
+      cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
+      if (!pts || (W * H < 520000) !== (N === 520)) build();
+      var r = core.getBoundingClientRect();
+      if (orbState === "locked" || !r.width) { cx = W / 2; cy = H / 2; R = Math.max(40, Math.min(W * 0.28, H * 0.22, 190)); }
+      else { cx = r.left + r.width / 2; cy = r.top + r.height / 2; R = Math.max(30, Math.min(r.width * (r.width < 600 ? 0.235 : 0.2), r.height * 0.25, 170)); }
+      kick();
+    }
+    function kick() { if (!raf && !document.hidden) raf = requestAnimationFrame(frame); }
+    function frame(now) {
+      raf = 0; if (document.hidden) return;
+      var st = orbState, active = st === "listening" || st === "speaking" || st === "connecting";
+      if (!active && now - lastDraw < 32) { kick(); return; }
+      var dt = Math.min(0.05, ((now - last) / 1000) || 0.016); last = now; lastDraw = now;
+      var slow = reduce.matches ? 0.2 : 1; t += dt * slow;
+      var lv = voiceLevel(); env += (lv - env) * (lv > env ? 0.5 : 0.15);
+      var v = st === "speaking" ? env : st === "listening" ? env * 0.6 : 0;
+      var tgt = st === "speaking" ? 0.4 + 0.5 * v : st === "connecting" ? 0.48 : st === "listening" ? 0.3 + 0.4 * v : st === "locked" ? 0.06 : 0.13;
+      var k = Math.min(1, dt * 5);
+      energy += (tgt - energy) * k;
+      think += ((st === "connecting" ? 1 : 0) - think) * k;
+      listen += ((st === "listening" ? 1 : 0) - listen) * k;
+      speak += ((st === "speaking" ? 1 : 0) - speak) * k;
+      rotY += dt * slow * (0.13 + 0.85 * think + 0.25 * energy);
+      draw(reduce.matches ? v * 0.3 : v); kick();
+    }
+    function rgba(a) { return "rgba(98,227,255," + Math.max(0, Math.min(1, a)).toFixed(3) + ")"; }
+    function draw(voice) {
+      var dim = orbState === "locked", TAU = Math.PI * 2;
+      ctx.setTransform(DPR, 0, 0, DPR, 0, 0); ctx.globalCompositeOperation = "source-over"; ctx.globalAlpha = 1;
+      ctx.fillStyle = "#010509"; ctx.fillRect(0, 0, W, H);
+      var g = ctx.createRadialGradient(cx, cy, R * 0.3, cx, cy, Math.max(W, H) * 0.8);
+      g.addColorStop(0, "rgba(60,180,255," + (0.11 + 0.08 * energy).toFixed(3) + ")"); g.addColorStop(0.32, "rgba(60,180,255,0.035)"); g.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+      ctx.globalCompositeOperation = "lighter"; ctx.fillStyle = "rgb(98,227,255)";
+      for (var d = 0; d < dust.length; d++) { var p = dust[d]; p.y -= p.v * 0.016 * (reduce.matches ? 0.2 : 1); if (p.y < -0.02) { p.y = 1.02; p.x = Math.random(); } ctx.globalAlpha = p.a; ctx.fillRect(p.x * W, p.y * H, p.s, p.s); }
+      ctx.globalAlpha = 1;
+      var base = dim ? 0.3 : 0.55 + 0.45 * energy;
+      var r1 = R * 1.52; ctx.save(); ctx.translate(cx, cy); ctx.rotate(t * 0.05); ctx.strokeStyle = rgba(0.16 + 0.22 * base); ctx.lineWidth = 1; ctx.beginPath();
+      for (var i = 0; i < 120; i++) { var a = i / 120 * TAU, len = i % 10 === 0 ? 7 : 3, c = Math.cos(a), s = Math.sin(a); ctx.moveTo(c * r1, s * r1); ctx.lineTo(c * (r1 + len), s * (r1 + len)); }
+      ctx.stroke(); ctx.restore();
+      var r2 = R * 1.72; ctx.save(); ctx.translate(cx, cy); ctx.rotate(-t * (0.1 + 0.55 * think)); ctx.strokeStyle = rgba(0.3 + 0.38 * base + 0.2 * listen); ctx.lineWidth = 2; ctx.lineCap = "round";
+      [[0, 0.95], [1.25, 1.72], [2.2, 3.85], [4.3, 4.62], [5.02, 5.9]].forEach(function (sg) { ctx.beginPath(); ctx.arc(0, 0, r2, sg[0], sg[1]); ctx.stroke(); });
+      ctx.restore();
+      var r3 = R * 1.96; ctx.save(); ctx.translate(cx, cy); ctx.rotate(t * 0.02); ctx.setLineDash([2, 9]); ctx.strokeStyle = rgba(0.12 + 0.06 * base); ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(0, 0, r3, 0, TAU); ctx.stroke(); ctx.setLineDash([]); ctx.restore();
+      var r0 = R * 1.3; ctx.strokeStyle = rgba(0.08 + 0.1 * base); ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(cx, cy, r0, 0, TAU); ctx.stroke();
+      if (think > 0.02) { var sa = t * 3.1; ctx.strokeStyle = "rgba(170,242,255," + (0.8 * think).toFixed(3) + ")"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(cx, cy, r0, sa, sa + 0.9); ctx.stroke(); }
+      var ring = Math.max(speak, listen * 0.55);
+      if (ring > 0.02) {
+        var bars = 72, rb = R * 1.14; ctx.strokeStyle = "rgba(150,236,255," + (0.65 * ring).toFixed(3) + ")"; ctx.lineWidth = 1.6; ctx.beginPath();
+        for (var b = 0; b < bars; b++) { var ang = b / bars * TAU, n = 0.5 + 0.5 * Math.sin(b * 1.7 + t * 9) * Math.sin(b * 0.6 - t * 5.3), L = (1.5 + R * 0.12 * voice * (0.35 + n)) * ring, cA = Math.cos(ang), sA = Math.sin(ang); ctx.moveTo(cx + cA * rb, cy + sA * rb); ctx.lineTo(cx + cA * (rb + L), cy + sA * (rb + L)); }
+        ctx.stroke();
+      }
+      var amp = 0.025 + 0.1 * energy + 0.12 * voice, breath = 1 + 0.018 * Math.sin(t * 1.3) + 0.06 * voice + 0.03 * listen;
+      var cyR = Math.cos(rotY), syR = Math.sin(rotY), tilt = 0.42 + 0.12 * Math.sin(t * 0.17), cxR = Math.cos(tilt), sxR = Math.sin(tilt);
+      var tt = t * (1 + 1.6 * think), Rs = R * breath, scale = Math.max(0.82, R / 110), lift = dim ? 0.4 : 0.6 + 0.4 * Math.min(1, energy * 1.6);
+      for (var q = 0; q < N; q++) {
+        var x = pts[q * 3], y = pts[q * 3 + 1], z = pts[q * 3 + 2];
+        var x1 = x * cyR + z * syR, z1 = -x * syR + z * cyR, y1 = y * cxR - z1 * sxR, z2 = y * sxR + z1 * cxR;
+        var nz = Math.sin(x * 3.1 + tt * 1.25) * Math.cos(y * 2.7 - tt * 0.95) + 0.6 * Math.sin(z * 3.7 + tt * 1.6 + x * 1.3);
+        var dsp = 1 + amp * nz, depth = (z2 + 1) * 0.5, size = (2.2 + 4.4 * depth) * scale * (0.85 + 0.35 * energy) * sz[q];
+        ctx.globalAlpha = (0.08 + 0.92 * depth * depth) * lift;
+        ctx.drawImage(depth > 0.72 ? sprites[2] : depth > 0.38 ? sprites[1] : sprites[0], cx + x1 * Rs * dsp - size / 2, cy + y1 * Rs * dsp - size / 2, size, size);
+      }
+      ctx.globalAlpha = 1;
+      var kk = dim ? 0.25 : 0.35 + 0.35 * energy + 0.3 * voice, rr = R * (1.05 + 0.08 * voice);
+      g = ctx.createRadialGradient(cx, cy, 0, cx, cy, rr);
+      g.addColorStop(0, "rgba(190,245,255," + (0.4 * kk).toFixed(3) + ")"); g.addColorStop(0.25, "rgba(90,210,255," + (0.2 * kk).toFixed(3) + ")");
+      g.addColorStop(0.7, "rgba(40,120,255," + (0.06 * kk).toFixed(3) + ")"); g.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, rr, 0, TAU); ctx.fill();
+      var rc = R * (0.15 + 0.07 * voice); g = ctx.createRadialGradient(cx, cy, 0, cx, cy, rc);
+      g.addColorStop(0, "rgba(255,255,255," + (dim ? 0.25 : 0.5 + 0.45 * voice).toFixed(3) + ")"); g.addColorStop(1, "rgba(120,230,255,0)");
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, rc, 0, TAU); ctx.fill();
+      ctx.globalCompositeOperation = "source-over";
+    }
+    return { measure: measure, kick: kick };
+  })();
+  var _setOrb = setOrb;
+  setOrb = function (s) { var was = orbState; _setOrb(s); if ((was === "locked") !== (s === "locked")) requestAnimationFrame(Orb.measure); };
+  addEventListener("resize", Orb.measure);
+  try { new ResizeObserver(function () { Orb.measure(); }).observe($("#core")); } catch (e) {}
+  document.addEventListener("visibilitychange", function () { if (!document.hidden) { Orb.kick(); if (conv) holdWake(); } });
+
+  /* ---------------- boot ---------------- */
+  Orb.measure();
+  var open = false; try { open = sessionStorage.getItem(K_SESSION) === "1"; } catch (e) {}
+  if (open && store.get(K_CFG)) enter(store.get(K_CFG)); else showLock();
+})();
+</script>
+</body>
+</html>
