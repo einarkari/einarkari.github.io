@@ -3,18 +3,15 @@ Verkefnasafn Einars Kára - einarkari.com
 
 ## Hvernig vefurinn er settur saman
 
-- **Forsíðan** (`index.html`, `assets/`, `fonts/`, `404.html` o.fl., sjá `.site-files`)
-  er smíðuð úr Higgsfield-vefnum *einarkari* og flutt hingað sjálfvirkt.
-  Ekki breyta þessum skrám hér í höndunum, þær eru skrifaðar yfir við næsta innflutning.
-- **Verkefnin** eru í eigin möppum (`evropa/`, `idnbyltingin/`, `jarvis/`, `skolabord/`)
-  og er breytt beint hér eins og áður.
+- **Forsíðan** er `index.html`, `style.css` og `main.js`. Engin smíði eða tól, bara venjulegar skrár.
+- **Verkefnin** eru í eigin möppum (`evropa/`, `idnbyltingin/`, `jarvis/`, `skolabord/`).
+- **Skjámyndir** af verkefnunum eru í `img/` (1440 x 900).
 
 ## Nýtt verkefni
 
-1. Settu verkefnið í nýja möppu hér, t.d. `nytt-verkefni/index.html`.
-2. Bættu því við forsíðuna í Higgsfield-vefnum: `app/src/content/projects.ts`
-   (leiðbeiningar í `app/src/content/README.md` þar). Hlekkurinn er
-   `https://einarkari.com/nytt-verkefni/`.
-3. Byggðu forsíðuna, settu `.tar.gz` af henni á netið og uppfærðu slóðina og
-   `sha256` í `.github/site-import.json`. Workflow-ið
-   `.github/workflows/import-site.yml` setur þá nýju forsíðuna inn.
+1. Settu verkefnið í nýja möppu, t.d. `nytt-verkefni/index.html`.
+2. Settu skjámynd af því í `img/nytt-verkefni.jpg` (má sleppa).
+3. Bættu einni línu efst í listann `window.PROJECTS` neðst í `index.html`.
+   Leiðbeiningar eru í athugasemdinni fyrir ofan listann.
+4. Hækkaðu `?v=` á `style.css` og `main.js` í `index.html` ef þeim skrám var breytt,
+   svo vafrar sæki nýjustu útgáfuna.
