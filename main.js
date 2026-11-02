@@ -291,11 +291,15 @@
   /* ---------- Start ---------- */
   renderFan();
   renderAll();
+  let started = false;
   const start = () => {
+    if (started) return;
+    started = true;
     $('#hero-title').classList.add('is-in');
     fan.classList.add('is-in');
     setTimeout(() => fan.classList.add('is-settled'), reduce ? 0 : 1500);
   };
   requestAnimationFrame(() => requestAnimationFrame(start));
+  setTimeout(start, 600); /* background tabs pause animation frames; show the content anyway */
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => update(true));
 })();
