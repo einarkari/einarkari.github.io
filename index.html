@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Einar Kári</title>
-<meta name="description" content="Verkefni Einars Kára Ólafssonar, fyrir skólann og í frítíma.">
+<meta name="description" content="Verkefni Einars Kára Ólafssonar, fyrir skólann og í frítíma, og hvernig hann notar gervigreind í þeim.">
 <meta name="author" content="Einar Kári Ólafsson">
 <meta name="theme-color" content="#f6f6f3">
 <meta property="og:type" content="website">
@@ -17,7 +17,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400..800&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=1">
+<link rel="stylesheet" href="style.css?v=2">
 </head>
 <body>
 
@@ -27,9 +27,10 @@
       <span class="brand__full">EINAR<i>/</i>KÁRI</span><span class="brand__short">EK</span>
     </a>
     <nav class="pill" id="nav" aria-label="Valmynd">
-      <a href="#top" data-sec="top" data-i18n="navHome">Forsíða</a>
-      <a href="#um" data-sec="um" data-i18n="navAbout">Um mig</a>
-      <a href="#verkefni" data-sec="verkefni" data-i18n="navWork">Verkefni</a>
+      <a href="#skolaverkefni" data-sec="skolaverkefni"><span class="l-full" data-i18n="school">Skólaverkefni</span><span class="l-short" data-i18n="schoolShort">Skóli</span></a>
+      <a href="#eigin-verkefni" data-sec="eigin-verkefni"><span class="l-full" data-i18n="private">Eigin verkefni</span><span class="l-short" data-i18n="privateShort">Eigin</span></a>
+      <a href="#gervigreind" data-sec="gervigreind"><span data-i18n="navAi">Gervigreind</span></a>
+      <a href="#um" data-sec="um"><span class="l-full" data-i18n="navAbout">Um mig</span><span class="l-short" data-i18n="navAboutShort">Um</span></a>
       <span class="pill__chip" aria-hidden="true"></span>
     </nav>
     <div class="lang" role="group" aria-label="Tungumál / Language">
@@ -52,22 +53,49 @@
         <div class="stage">
           <div class="wordmark" aria-hidden="true"><span>EINAR</span> <span>KÁRI</span></div>
           <div class="fan" id="fan"></div>
-          <div class="cursor cursor--einar" aria-hidden="true">
-            <svg viewBox="0 0 20 22"><path d="M2 2l15 7.2-6.6 1.8L7.6 18z"/></svg><span>Einar</span>
-          </div>
-          <div class="cursor cursor--claude" aria-hidden="true">
-            <svg viewBox="0 0 20 22"><path d="M2 2l15 7.2-6.6 1.8L7.6 18z"/></svg><span>Claude</span>
-          </div>
         </div>
 
         <div class="hero__foot">
           <p class="quote" data-i18n="quote">„Hér safna ég saman verkefnum sem ég hef gert, bæði fyrir skólann og í frítíma.“</p>
           <div class="actions">
-            <a class="btn btn--dark" href="#verkefni" data-i18n="ctaWork">Skoða verkefnin</a>
-            <a class="btn btn--ghost" href="#um" data-i18n="ctaAbout">Um mig</a>
+            <a class="btn btn--dark" href="#skolaverkefni" data-i18n="ctaWork">Skoða verkefnin</a>
+            <a class="btn btn--ghost" href="#gervigreind" data-i18n="ctaAi">Hvernig ég nota gervigreind</a>
           </div>
         </div>
       </div>
+    </div>
+  </section>
+
+  <div class="marquee" aria-hidden="true"><div class="marquee__track" id="marquee"></div></div>
+
+  <section class="group group--school" id="skolaverkefni" aria-labelledby="school-title">
+    <div class="wrap">
+      <div class="group__head">
+        <p class="gpill"><span data-i18n="schoolEyebrow">01 · Í skólanum</span></p>
+        <h2 class="group__title" id="school-title"><span data-i18n="school">Skólaverkefni</span><sup data-count="school"></sup></h2>
+        <p class="group__lead" data-i18n="schoolLead">Það sem ég geri í skólanum.</p>
+      </div>
+      <div class="grid" data-grid="school"></div>
+    </div>
+  </section>
+
+  <section class="group group--private" id="eigin-verkefni" aria-labelledby="private-title">
+    <div class="wrap">
+      <div class="group__head">
+        <p class="gpill"><span data-i18n="privateEyebrow">02 · Í frítímanum</span></p>
+        <h2 class="group__title" id="private-title"><span data-i18n="private">Eigin verkefni</span><sup data-count="private"></sup></h2>
+        <p class="group__lead" data-i18n="privateLead">Það sem ég smíða fyrir sjálfan mig.</p>
+      </div>
+      <div class="grid" data-grid="private"></div>
+    </div>
+  </section>
+
+  <section class="ai-sec" id="gervigreind" aria-labelledby="ai-title">
+    <div class="wrap">
+      <p class="eyebrow" data-i18n="aiEyebrow">Gervigreind</p>
+      <h2 class="ai-sec__title" id="ai-title" data-i18n="aiTitle">Hvernig ég nota gervigreind</h2>
+      <p class="ai-sec__lead" data-i18n="aiLead">Ég nota gervigreind sem verkfæri þegar ég smíða. Hér sést hvaða tól ég hef notað og í hvað.</p>
+      <div class="tools" id="tools"></div>
     </div>
   </section>
 
@@ -75,27 +103,6 @@
     <div class="wrap">
       <p class="eyebrow" id="about-label" data-i18n="aboutEyebrow">Um mig</p>
       <p class="reveal" id="about-text">Ég heiti Einar Kári. Hér safna ég saman því sem ég smíða, oft með Claude: þrívíddarflug um Evrópu, minn eigin Jarvis, stundaskrá fyrir bekkinn og teiknimynd um iðnbyltinguna.</p>
-    </div>
-  </section>
-
-  <div class="marquee" aria-hidden="true"><div class="marquee__track" id="marquee"></div></div>
-
-  <section class="work" id="verkefni" aria-labelledby="work-title">
-    <div class="wrap">
-      <div class="work__head">
-        <div>
-          <p class="eyebrow" data-i18n="workEyebrow">Verkefnasafn</p>
-          <h2 class="work__title" id="work-title"><span data-i18n="workTitle">Verkefni</span><sup id="work-count"></sup></h2>
-          <p class="work__lead" data-i18n="workLead">Allt sem ég hef smíðað, nýjast fyrst.</p>
-        </div>
-        <div class="pill tabs" id="tabs" role="tablist" aria-label="Sía verkefni">
-          <button type="button" role="tab" data-filter="all" aria-selected="true"><span data-i18n="tabAll">Allt</span><sup></sup></button>
-          <button type="button" role="tab" data-filter="school" aria-selected="false"><span data-i18n="school">Skólaverkefni</span><sup></sup></button>
-          <button type="button" role="tab" data-filter="private" aria-selected="false"><span data-i18n="private">Eigin verkefni</span><sup></sup></button>
-          <span class="pill__chip" aria-hidden="true"></span>
-        </div>
-      </div>
-      <div class="grid" id="grid" aria-live="polite"></div>
     </div>
   </section>
 </main>
@@ -116,23 +123,31 @@
    url:   mappa verkefnisins, t.d. 'nytt-verkefni/'.
    img:   skjámynd í img/ (best 1440 x 900). Má sleppa.
    date, course, text: strengur á íslensku, eða {is:'…', en:'…'} fyrir bæði tungumál.
-   color: litur verkefnisins (bakgrunnur á spjaldinu). Raðað eftir dagsetningu, nýjast fyrst. */
+   color: litur verkefnisins (bakgrunnur á spjaldinu).
+   ai:    hvernig gervigreind var notuð, listi af {tool:'Claude', what:{is:'…', en:'…'}}.
+          Tólin birtast líka sjálfkrafa í hlutanum „Hvernig ég nota gervigreind“. Má sleppa.
+   Raðað eftir dagsetningu, nýjast fyrst. */
 window.PROJECTS = [
  {group:'school', title:'Iðnbyltingin', url:'idnbyltingin/', img:'img/idnbyltingin.jpg', color:'#c8a46a',
   date:{is:'Nóvember 2026', en:'November 2026'},
   course:{is:'Borgir í basli', en:'Borgir í basli (Cities in trouble)'},
   text:{is:'Teiknimynd með íslenskri talsetningu: hvenær og af hverju iðnbyltingin hófst, hvernig hún barst til Íslands, lífið í borgunum og baráttan við kóleru.',
-        en:'An animated film with Icelandic voice-over: when and why the Industrial Revolution began, how it reached Iceland, life in the cities and the fight against cholera.'}},
+        en:'An animated film with Icelandic voice-over: when and why the Industrial Revolution began, how it reached Iceland, life in the cities and the fight against cholera.'},
+  ai:[{tool:'Claude', what:{is:'Handrit og hreyfimyndir', en:'Script and animation'}},
+      {tool:'ElevenLabs', what:{is:'Íslensk talsetning (röddin Ingibjorg)', en:'Icelandic voice-over (the voice Ingibjorg)'}}]},
  {group:'private', title:'Jarvis', url:'jarvis/', img:'img/jarvis.jpg', color:'#62E3FF',
   date:{is:'Nóvember 2026', en:'November 2026'},
   course:{is:'Raddaðstoðarmaður', en:'Voice assistant'},
   text:{is:'Minn eigin Jarvis, eins og í Iron Man. Ég tala við hann og hann svarar með rödd: segir mér veðrið, hvað er næst á dagskrá og hvað ég á að taka með. Læstur með lykilorði og Touch ID.',
-        en:'My own Jarvis, like in Iron Man. I talk to him and he answers out loud: the weather, what\'s next on my schedule and what to bring. Locked with a password and Touch ID.'}},
+        en:'My own Jarvis, like in Iron Man. I talk to him and he answers out loud: the weather, what\'s next on my schedule and what to bring. Locked with a password and Touch ID.'},
+  ai:[{tool:'ElevenLabs', what:{is:'Samtalsgervigreindin: Jarvis hlustar á mig og svarar með rödd', en:'The conversational AI: Jarvis listens to me and answers out loud'}},
+      {tool:'Claude', what:{is:'Hjálpaði mér að smíða appið', en:'Helped me build the app'}}]},
  {group:'private', title:'Skólaborðið', url:'skolabord/', img:'img/skolabord.jpg', color:'#3461E8',
   date:{is:'Október 2026', en:'October 2026'},
   course:{is:'Vefapp fyrir bekkinn', en:'Web app for the class'},
   text:{is:'Stundaskrá bekkjarins og heimavinna úr Google Classroom á einu borði. Sýnir næsta tíma með niðurtalningu og öll verkefni raðað eftir skiladegi.',
-        en:'The class timetable and homework from Google Classroom on one board. Shows the next lesson with a countdown and every assignment sorted by due date.'}},
+        en:'The class timetable and homework from Google Classroom on one board. Shows the next lesson with a countdown and every assignment sorted by due date.'},
+  ai:[{tool:'Claude', what:{is:'Hjálpaði mér að smíða appið og tengja það við Google Classroom', en:'Helped me build the app and connect it to Google Classroom'}}]},
  {group:'school', title:'Evrópa', url:'evropa/', img:'img/evropa.jpg', color:'#ffcc33',
   date:{is:'Október 2026', en:'October 2026'},
   course:{is:'Sprettur V5, Heimsálfur, 8. bekkur', en:'Sprettur V5, Continents, 8th grade'},
@@ -140,6 +155,6 @@ window.PROJECTS = [
         en:'A 3D flight across Europe: countries, animals, nature, religions, culture, languages, government and industry. A group project with Leon Mikael Elvarsson and Snorri Örvarsson.'}}
 ];
 </script>
-<script src="main.js?v=1"></script>
+<script src="main.js?v=2"></script>
 </body>
 </html>
