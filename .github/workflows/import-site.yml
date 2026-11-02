@@ -1,0 +1,85 @@
+# Imports a static build of the einarkari.com front page (made from the
+# Higgsfield site) into this repo, so GitHub Pages serves it at einarkari.com.
+#
+# How it works: .github/site-import.json points at a .tar.gz of the built
+# site plus its sha256. Changing that file runs this workflow, which checks
+# the download, swaps in the new front-page files and commits them.
+#
+# The project folders (evropa/, idnbyltingin/, jarvis/, skolabord/ and any
+# new ones), CNAME and README.md are never touched: the import refuses to
+# overwrite any file it didn't put there itself. Files from the previous
+# import are listed in .site-files and removed before the new ones are copied
+# in, so old build files don't pile up.
+
+name: Import front page build
+
+on:
+  push:
+    branches: [main]
+    paths: [".github/site-import.json"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: site-import
+  cancel-in-progress: false
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download and verify the build
+        run: |
+          set -euo pipefail
+          url=$(jq -r '.url' .github/site-import.json)
+          sha=$(jq -r '.sha256' .github/site-import.json)
+          curl -fsSL --retry 3 "$url" -o "$RUNNER_TEMP/site.tar.gz"
+          echo "$sha  $RUNNER_TEMP/site.tar.gz" | sha256sum -c -
+          mkdir "$RUNNER_TEMP/site"
+          tar -xzf "$RUNNER_TEMP/site.tar.gz" -C "$RUNNER_TEMP/site"
+
+      - name: Replace the front page files
+        run: |
+          set -euo pipefail
+          src="$RUNNER_TEMP/site"
+          for p in CNAME README.md .github .git .site-files; do
+            if [ -e "$src/$p" ]; then
+              echo "The build contains a protected path: $p"; exit 1
+            fi
+          done
+          # Never overwrite a file this importer didn't put here (project
+          # folders and anything else added by hand). index.html is the one
+          # exception: the first import replaces the old hand-written page.
+          touch .site-files
+          clash=0
+          while IFS= read -r f; do
+            if [ -e "$f" ] && [ "$f" != "index.html" ] && ! grep -qxF -- "$f" .site-files; then
+              echo "Refusing to overwrite $f (not from a previous import)"; clash=1
+            fi
+          done < <(cd "$src" && find . -type f | sed 's|^\./||')
+          [ "$clash" = 0 ] || exit 1
+          if [ -s .site-files ]; then
+            while IFS= read -r f; do
+              [ -n "$f" ] && rm -f -- "$f"
+            done < .site-files
+          fi
+          cp -R "$src/." .
+          (cd "$src" && find . -type f | sed 's|^\./||' | LC_ALL=C sort) > .site-files
+          find . -type d -empty -not -path './.git' -not -path './.git/*' -delete
+
+      - name: Commit
+        run: |
+          set -euo pipefail
+          git add -A
+          if git diff --cached --quiet; then
+            echo "Nothing changed."; exit 0
+          fi
+          msg=$(jq -r '.message // "Import front page build"' .github/site-import.json)
+          git -c user.name="github-actions[bot]" \
+              -c user.email="41898099+github-actions[bot]@users.noreply.github.com" \
+              commit -m "$msg"
+          git push
