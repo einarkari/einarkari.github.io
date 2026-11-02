@@ -15,56 +15,42 @@
   const I18N = {
     is: {
       school: 'Skólaverkefni', schoolShort: 'Skóli', private: 'Eigin verkefni', privateShort: 'Eigin',
-      navAi: 'Gervigreind', navAbout: 'Um mig', navAboutShort: 'Um',
+      navAbout: 'Um mig', navAboutShort: 'Um',
       badge: 'Verkefnasafn 2026',
       hero: ['Verkefni sem ég smíða,', 'í skólanum og heima.'],
       quote: '„Hér safna ég saman verkefnum sem ég hef gert, bæði fyrir skólann og í frítíma.“',
-      ctaWork: 'Skoða verkefnin', ctaAi: 'Hvernig ég nota gervigreind',
+      ctaWork: 'Skoða verkefnin', ctaAbout: 'Um mig',
       schoolEyebrow: '01 · Í skólanum', schoolLead: 'Það sem ég geri í skólanum.',
       privateEyebrow: '02 · Í frítímanum', privateLead: 'Það sem ég smíða fyrir sjálfan mig.',
-      aiEyebrow: 'Gervigreind', aiTitle: 'Hvernig ég nota gervigreind',
-      aiLead: 'Ég nota gervigreind sem verkfæri þegar ég smíða. Hér sést hvaða tól ég hef notað og í hvað.',
-      aiLabel: 'Gervigreind', count: (n) => `${n} verkefni`,
       aboutEyebrow: 'Um mig',
-      about: ['Ég heiti Einar Kári. Hér safna ég saman því sem ég smíða, oft með Claude:',
+      about: ['Ég heiti Einar Kári. Hér safna ég saman því sem ég smíða:',
         { chip: 'evropa' }, 'þrívíddarflug um Evrópu,',
         { chip: 'jarvis' }, 'minn eigin Jarvis,',
         { chip: 'skolabord' }, 'stundaskrá fyrir bekkinn og',
         { chip: 'idnbyltingin' }, 'teiknimynd um iðnbyltinguna.'],
       open: 'Opna verkefni', empty: 'Ekkert hér ennþá. Kemur bráðum.',
-      builtWith: 'Smíðað með Claude',
       rights: '© 2026 Einar Kári Ólafsson', top: 'Aftur upp ↑',
       navLabel: 'Valmynd', home: 'Einar Kári, forsíða'
     },
     en: {
       school: 'School projects', schoolShort: 'School', private: 'Personal projects', privateShort: 'Personal',
-      navAi: 'AI', navAbout: 'About', navAboutShort: 'About',
+      navAbout: 'About', navAboutShort: 'About',
       badge: 'Portfolio 2026',
       hero: ['Things I build,', 'at school and at home.'],
       quote: '“This is where I collect the projects I’ve made, both for school and in my free time.”',
-      ctaWork: 'See the projects', ctaAi: 'How I use AI',
+      ctaWork: 'See the projects', ctaAbout: 'About me',
       schoolEyebrow: '01 · At school', schoolLead: 'What I make at school.',
       privateEyebrow: '02 · In my free time', privateLead: 'Things I build for myself.',
-      aiEyebrow: 'AI', aiTitle: 'How I use AI',
-      aiLead: 'I use AI as a tool when I build things. Here’s which tools I’ve used, and for what.',
-      aiLabel: 'AI', count: (n) => `${n} project${n === 1 ? '' : 's'}`,
       aboutEyebrow: 'About me',
-      about: ['I’m Einar Kári. This is where I collect the things I build, often with Claude:',
+      about: ['I’m Einar Kári. This is where I collect the things I build:',
         { chip: 'evropa' }, 'a 3D flight across Europe,',
         { chip: 'jarvis' }, 'my own Jarvis,',
         { chip: 'skolabord' }, 'a timetable for my class and',
         { chip: 'idnbyltingin' }, 'a cartoon about the Industrial Revolution.'],
       open: 'Open project', empty: 'Nothing here yet. Coming soon.',
-      builtWith: 'Built with Claude',
       rights: '© 2026 Einar Kári Ólafsson', top: 'Back to top ↑',
       navLabel: 'Menu', home: 'Einar Kári, home'
     }
-  };
-
-  /* AI tools: colour and a one-line description. A tool not listed here still shows, without a description. */
-  const TOOLS = {
-    Claude: { color: '#d97757', desc: { is: 'Gervigreind frá Anthropic sem skrifar texta og kóða.', en: 'An AI from Anthropic that writes text and code.' } },
-    ElevenLabs: { color: '#f3f3f1', ink: '#0f0f10', desc: { is: 'Gervigreind sem býr til raddir, talsetningu og raddspjall.', en: 'An AI that makes voices, voice-overs and voice conversations.' } }
   };
 
   const GROUPS = [
@@ -89,7 +75,6 @@
     .sort((a, b) => dateKey(b.date) - dateKey(a.date) || a._i - b._i);
   const byId = Object.fromEntries(projects.map((p) => [p.id, p]));
   const inGroup = (g) => projects.filter((p) => p.group === g);
-  const toolColor = (name) => (TOOLS[name] && TOOLS[name].color) || '#9a9aa2';
 
   let lang = 'is';
   try { const s = localStorage.getItem(STORE); if (s === 'is' || s === 'en') lang = s; } catch (e) { /* storage blocked */ }
@@ -152,17 +137,11 @@
   function renderMarquee() {
     const items = projects.map((p) =>
       `<span>${esc(p.title)}</span>${p.img ? `<img src="${esc(p.img)}" alt="" loading="lazy">` : ''}<span class="marquee__star">✦</span>`
-    ).join('') + `<span>${esc(t('builtWith'))}</span><span class="marquee__star">✦</span>`;
+    ).join('');
     $('#marquee').innerHTML = `<div class="marquee__group">${items}</div><div class="marquee__group">${items}</div>`;
   }
 
   const ARROW = '<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 10.5l7-7M5 3.5h5.5V9"/></svg>';
-
-  function aiBox(p) {
-    if (!p.ai || !p.ai.length) return '';
-    const rows = p.ai.map((a) => `<li style="--tool:${esc(toolColor(a.tool))}"><b>${esc(a.tool)}</b><span>${esc(pick(a.what, lang))}</span></li>`).join('');
-    return `<div class="ai"><p class="ai__label">✦ ${esc(t('aiLabel'))}</p><ul>${rows}</ul></div>`;
-  }
 
   function card(p, i) {
     const media = p.img
@@ -176,7 +155,6 @@
         <h3 class="pcard__title">${esc(p.title)}</h3>
         ${course ? `<p class="pcard__course">${esc(course)}</p>` : ''}
         <p class="pcard__text">${esc(pick(p.text, lang))}</p>
-        ${aiBox(p)}
         <span class="pcard__go">${esc(t('open'))} ${ARROW}</span>
       </div>
     </a>`;
@@ -190,32 +168,12 @@
     });
   }
 
-  function renderTools() {
-    const uses = new Map();
-    projects.forEach((p) => (p.ai || []).forEach((a) => {
-      if (!uses.has(a.tool)) uses.set(a.tool, []);
-      uses.get(a.tool).push({ p, what: a.what });
-    }));
-    const tools = Array.from(uses.entries()).sort((a, b) => b[1].length - a[1].length);
-    $('#tools').innerHTML = tools.map(([name, list], i) => {
-      const meta = TOOLS[name] || {};
-      const items = list.map(({ p, what }) => `<li><a href="${esc(p.url)}">${p.img ? `<img src="${esc(p.img)}" alt="" width="1440" height="900" loading="lazy">` : '<span></span>'}<div><b>${esc(p.title)}</b><span>${esc(pick(what, lang))}</span></div></a></li>`).join('');
-      return `<article class="tool rv" style="--tool:${esc(meta.color || '#9a9aa2')};--tool-ink:${esc(meta.ink || '#fff')};--d:${(i % 2) * 90}ms">
-        <div class="tool__head"><span class="tool__mark" aria-hidden="true">${esc(name.charAt(0))}</span><h3>${esc(name)}</h3><span class="tool__count">${esc(t('count')(list.length))}</span></div>
-        ${meta.desc ? `<p class="tool__desc">${esc(pick(meta.desc, lang))}</p>` : ''}
-        <ul class="tool__uses">${items}</ul>
-      </article>`;
-    }).join('');
-    observe($$('.rv', $('#tools')));
-  }
-
   function renderAll() {
     applyText();
     renderHeadline();
     renderAbout();
     renderMarquee();
     renderGroups();
-    renderTools();
     update(true);
   }
 

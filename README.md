@@ -14,7 +14,5 @@ Verkefnasafn Einars Kára - einarkari.com
 3. Bættu einni línu efst í listann `window.PROJECTS` neðst í `index.html`.
    Leiðbeiningar eru í athugasemdinni fyrir ofan listann. `group` ræður hvort það lendir
    undir Skólaverkefnum eða Eigin verkefnum.
-4. Skrifaðu í `ai` hvernig gervigreind var notuð (t.d. Claude, ElevenLabs). Tólin birtast
-   sjálfkrafa í hlutanum „Hvernig ég nota gervigreind“ á forsíðunni.
-5. Hækkaðu `?v=` á `style.css` og `main.js` í `index.html` ef þeim skrám var breytt,
+4. Hækkaðu `?v=` á `style.css` og `main.js` í `index.html` ef þeim skrám var breytt,
    svo vafrar sæki nýjustu útgáfuna.
