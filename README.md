@@ -4,7 +4,7 @@ Verkefnasafn Einars Kára - einarkari.com
 ## Hvernig vefurinn er settur saman
 
 - **Forsíðan** er `index.html`, `style.css` og `main.js`. Engin smíði eða tól, bara venjulegar skrár.
-- **Verkefnin** eru í eigin möppum (`evropa/`, `idnbyltingin/`, `jarvis/`, `skolabord/`).
+- **Verkefnin** eru í eigin möppum (`evropa/`, `idnbyltingin/`, `skolabord/`).
 - **Skjámyndir** af verkefnunum eru í `img/` (1440 x 900).
 
 ## Nýtt verkefni
