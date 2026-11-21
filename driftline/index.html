@@ -1,0 +1,519 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Driftline: a 3D street racing game. Race 8 AI drivers, drift to fill nitro, dodge traffic and police.">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<style>:root{color-scheme:light;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}body{margin:0;font:14px system-ui}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>Driftline</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Teko:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* Layout: full-bleed WebGL canvas; light frosted HUD panels pinned to the corners; menus float over a bright studio. */
+:root {
+  --bg: #eef2f6;
+  --surface: rgba(255, 255, 255, 0.84);
+  --surface-solid: #ffffff;
+  --ink: #10151f;
+  --dim: #5d6779;
+  --line: rgba(16, 21, 31, 0.12);
+  --orange: #ff6b1a;
+  --orange-2: #ffa23a;
+  --cyan: #00a7c7;
+  --amber: #ffc400;
+  --nitro: #1f8bff;
+  --good: #19a35a;
+  --bad: #e5383b;
+  --shadow: 0 6px 22px rgba(16, 21, 31, 0.14);
+  --display: "Teko", "Arial Narrow", "Roboto Condensed", sans-serif;
+  --body: "Rajdhani", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --sl: env(safe-area-inset-left, 0px);
+  --sr: env(safe-area-inset-right, 0px);
+  --st: env(safe-area-inset-top, 0px);
+  --sb: env(safe-area-inset-bottom, 0px);
+  color-scheme: light;
+}
+html, body { height: 100%; background: var(--bg); color: var(--ink); overflow: hidden; overscroll-behavior: none; }
+body { font-family: var(--body); -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; touch-action: none; }
+#app { position: fixed; inset: 0; overflow: hidden; background: var(--bg); }
+#gl { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+#speedlines { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; mix-blend-mode: screen; }
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--orange); outline-offset: 3px; }
+.glass { background: var(--surface); border: 1px solid rgba(255, 255, 255, 0.7); box-shadow: var(--shadow); backdrop-filter: blur(10px) saturate(1.2); -webkit-backdrop-filter: blur(10px) saturate(1.2); }
+
+/* ---------------------------------------------------------------- HUD */
+#hud { position: absolute; inset: 0; pointer-events: none; font-family: var(--display); color: var(--ink); }
+#hud .tl { position: absolute; left: calc(16px + var(--sl)); top: calc(14px + var(--st)); display: grid; gap: 8px; justify-items: start; }
+.poslap { display: flex; align-items: stretch; border-radius: 12px; overflow: hidden; border-left: 5px solid var(--orange); }
+.poslap > div { display: flex; align-items: baseline; gap: 2px; padding: 4px 16px 0 14px; line-height: 0.85; font-style: italic; }
+.poslap > div + div { border-left: 1px solid var(--line); }
+.poslap small { font-family: var(--body); font-style: normal; font-weight: 700; font-size: 11px; letter-spacing: 0.18em; color: var(--dim); align-self: flex-start; margin: 8px 6px 0 0; }
+.poslap b { font-size: clamp(50px, 8vh, 78px); font-weight: 600; }
+.poslap .of { font-size: clamp(20px, 3vh, 28px); color: var(--dim); }
+.stand { list-style: none; margin: 0; padding: 0; display: grid; gap: 3px; font-size: clamp(16px, 2.2vh, 20px); width: 200px; }
+.stand li { display: grid; grid-template-columns: 12px 22px 1fr auto; align-items: center; gap: 6px; padding: 2px 10px 0 8px; border-radius: 6px; background: rgba(255,255,255,0.8); box-shadow: 0 2px 8px rgba(16,21,31,0.1); letter-spacing: 0.04em; line-height: 1.3; transition: transform 0.25s ease; }
+.stand li::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: var(--dot, #888); margin-top: -3px; }
+.stand li b { font-weight: 600; color: var(--dim); }
+.stand li .gp { color: var(--dim); font-size: 0.85em; font-variant-numeric: tabular-nums; }
+.stand li.me { background: var(--orange); color: #fff; }
+.stand li.me b, .stand li.me .gp { color: #fff; }
+.stand li.me::before { background: #fff; }
+
+#hud .tr { position: absolute; right: calc(16px + var(--sr)); top: calc(14px + var(--st)); display: grid; justify-items: end; gap: 8px; }
+.timer { border-radius: 12px; border-right: 5px solid var(--cyan); padding: 6px 16px 6px 18px; display: grid; justify-items: end; min-width: 200px; }
+.time { font-size: clamp(36px, 5.6vh, 52px); font-weight: 500; line-height: 0.95; font-variant-numeric: tabular-nums; font-style: italic; }
+.laprow { display: grid; grid-template-columns: auto 1fr; gap: 0 22px; width: 100%; font-size: clamp(16px, 2.3vh, 21px); line-height: 1.05; font-variant-numeric: tabular-nums; }
+.laprow span { color: var(--dim); letter-spacing: 0.06em; }
+.laprow b { font-weight: 500; text-align: right; }
+.iconbtn { pointer-events: auto; width: 46px; height: 46px; border-radius: 50%; font-family: var(--display); font-size: 22px; letter-spacing: -2px; display: grid; place-items: center; color: var(--ink); }
+
+#hud .tc { position: absolute; left: 50%; top: calc(12px + var(--st)); transform: translateX(-50%); display: grid; justify-items: center; gap: 6px; width: min(520px, 56vw); }
+.drift { display: flex; align-items: baseline; gap: 10px; font-style: italic; opacity: 0; transform: translateY(-8px) scale(0.92); transition: opacity 0.2s, transform 0.25s cubic-bezier(.2,1.4,.4,1); text-shadow: 0 2px 10px rgba(0,0,0,0.35); }
+.drift.on { opacity: 1; transform: none; }
+.drift .dp { font-size: clamp(42px, 6.5vh, 64px); font-weight: 600; color: var(--amber); line-height: 0.9; font-variant-numeric: tabular-nums; }
+.drift .dm { font-size: clamp(30px, 4.6vh, 44px); color: #fff; }
+.drift .dl { font-size: 18px; color: #fff; letter-spacing: 0.2em; font-style: normal; }
+.chips { display: grid; gap: 4px; justify-items: center; }
+.chip { display: flex; align-items: stretch; font-size: 21px; letter-spacing: 0.08em; animation: chipIn 0.35s cubic-bezier(.2,1.5,.4,1); transition: opacity 0.4s, transform 0.4s; box-shadow: 0 3px 10px rgba(0,0,0,0.18); }
+.chip .l { background: var(--amber); color: var(--ink); padding: 1px 12px 0; font-weight: 600; }
+.chip .v { background: var(--ink); color: #fff; padding: 1px 12px 0; font-weight: 500; }
+.chip.near .l { background: var(--cyan); color: #fff; }
+.chip.nitro .l { background: var(--nitro); color: #fff; }
+.chip.lap .l { background: var(--good); color: #fff; }
+.chip.bad .l { background: var(--bad); color: #fff; }
+.chip.out { opacity: 0; transform: translateY(-10px); }
+@keyframes chipIn { from { opacity: 0; transform: scale(1.4); } to { opacity: 1; transform: none; } }
+.heat { display: none; width: min(300px, 46vw); gap: 3px; padding: 6px 12px; border-radius: 10px; }
+.heat.on { display: grid; }
+.heat .hl { font-size: 17px; letter-spacing: 0.22em; text-align: center; color: var(--bad); }
+.heat.pursuit .hl { animation: siren 0.5s steps(1) infinite; }
+@keyframes siren { 0% { color: var(--bad); } 50% { color: #1f6bff; } }
+.heat .hb, .heat .bb { position: relative; height: 6px; background: rgba(16,21,31,0.1); overflow: hidden; border-radius: 3px; }
+.heat .hb i, .heat .bb i { position: absolute; inset: 0; transform-origin: left; transform: scaleX(0); }
+.heat .hb i { background: linear-gradient(90deg, var(--orange-2), var(--bad)); }
+.heat .bb { height: 4px; }
+.heat .bb i { background: var(--ink); }
+.heat .t1, .heat .t2 { position: absolute; top: 0; bottom: 0; width: 2px; background: rgba(255,255,255,0.9); }
+.heat .t1 { left: 55%; } .heat .t2 { left: 90%; }
+
+#hud .bl { position: absolute; left: calc(16px + var(--sl)); bottom: calc(14px + var(--sb)); display: grid; justify-items: center; gap: 4px; }
+#minimap { width: clamp(150px, 24vh, 214px); height: clamp(150px, 24vh, 214px); display: block; border-radius: 50%; box-shadow: var(--shadow); }
+.mmname { font-family: var(--body); font-weight: 700; font-size: 12px; letter-spacing: 0.22em; color: var(--ink); background: rgba(255,255,255,0.8); padding: 2px 10px; border-radius: 20px; }
+
+#hud .br { position: absolute; right: calc(12px + var(--sr)); bottom: calc(8px + var(--sb)); width: clamp(190px, 31vh, 268px); aspect-ratio: 1; max-width: 100%; }
+.gaugebg { position: absolute; inset: 4%; border-radius: 50%; }
+.gauge { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.gauge circle { fill: none; transform-origin: 100px 100px; transform: rotate(135deg); }
+.g-bg { stroke: rgba(16,21,31,0.1); stroke-width: 7; stroke-dasharray: 367.6 999; }
+.g-red { stroke: rgba(229,56,59,0.35); stroke-width: 7; stroke-dasharray: 0 323.5 44.1 999; }
+.g-rpm { stroke: var(--orange); stroke-width: 7; stroke-linecap: round; stroke-dasharray: 10 999; }
+#hud.redline .g-rpm { stroke: var(--bad); }
+.g-nbg { stroke: rgba(31,139,255,0.14); stroke-width: 4; stroke-dasharray: 301.6 999; }
+.g-nitro { stroke: var(--nitro); stroke-width: 4; stroke-linecap: round; stroke-dasharray: 10 999; }
+#hud.boosting .g-nitro { stroke: var(--cyan); }
+.tk { stroke: rgba(16,21,31,0.35); stroke-width: 1.2; }
+.tk.major { stroke: var(--ink); stroke-width: 2.2; }
+.tn { font-family: var(--display); font-size: 13px; fill: var(--dim); text-anchor: middle; }
+.br .spd { position: absolute; left: 0; right: 0; top: 33%; text-align: center; display: grid; justify-items: center; line-height: 0.82; }
+.br .spd b { font-size: clamp(54px, 9vh, 82px); font-weight: 500; font-style: italic; font-variant-numeric: tabular-nums; }
+.br .spd span { font-family: var(--body); font-weight: 700; font-size: 12px; letter-spacing: 0.24em; color: var(--dim); }
+.br .gear { position: absolute; left: 0; right: 0; top: 66%; text-align: center; font-size: clamp(20px, 3vh, 26px); letter-spacing: 0.06em; }
+.br .npct { position: absolute; right: 4%; bottom: 3%; display: grid; justify-items: end; line-height: 0.9; }
+.br .npct span { font-family: var(--body); font-weight: 700; font-size: 11px; letter-spacing: 0.2em; color: var(--nitro); }
+.br .npct b { font-size: 22px; font-weight: 500; font-variant-numeric: tabular-nums; }
+
+.msg { position: absolute; left: 0; right: 0; top: 30%; text-align: center; font-size: clamp(42px, 8vh, 78px); font-style: italic; font-weight: 600; letter-spacing: 0.04em; opacity: 0; pointer-events: none; color: #fff; text-shadow: 0 3px 0 rgba(16,21,31,0.25), 0 6px 24px rgba(16,21,31,0.45); }
+.msg.on { animation: msgIn 0.5s cubic-bezier(.2,1.4,.4,1) forwards; }
+.msg.big { font-size: clamp(58px, 12vh, 116px); }
+.msg.bad, .msg.police { color: #ff4d4f; }
+.msg.good { color: #7dffb0; }
+@keyframes msgIn { from { opacity: 0; transform: scale(1.5) skewX(-10deg); letter-spacing: 0.4em; } to { opacity: 1; transform: skewX(-6deg); } }
+.count { position: absolute; left: 0; right: 0; top: 26%; text-align: center; font-size: clamp(110px, 24vh, 220px); font-weight: 600; font-style: italic; opacity: 0; pointer-events: none; line-height: 1; color: #fff; text-shadow: 0 4px 0 rgba(16,21,31,0.2), 0 10px 40px rgba(16,21,31,0.45); }
+.count.on { animation: countIn 0.95s ease-out forwards; }
+.count.go { color: #46e88a; }
+@keyframes countIn { 0% { opacity: 0; transform: scale(2); } 15% { opacity: 1; transform: scale(1); } 75% { opacity: 1; } 100% { opacity: 0; transform: scale(0.85); } }
+.slip { position: absolute; left: 50%; bottom: calc(26% + var(--sb)); transform: translateX(-50%) skewX(-8deg); font-size: clamp(30px, 5vh, 46px); font-style: italic; font-weight: 600; letter-spacing: 0.06em; color: #34d8ff; text-shadow: 0 2px 0 rgba(16,21,31,0.35), 0 0 18px rgba(0,167,199,0.55); opacity: 0; transition: opacity 0.2s; }
+.slip.on { opacity: 1; }
+.keysbar { position: absolute; left: 50%; bottom: calc(10px + var(--sb)); transform: translateX(-50%); display: flex; gap: 14px; padding: 6px 14px 3px; border-radius: 20px; font-size: 15px; letter-spacing: 0.08em; white-space: nowrap; animation: fadeOut 1s ease 14s forwards; }
+.keysbar b { color: var(--orange); font-weight: 600; margin-right: 4px; }
+@keyframes fadeOut { to { opacity: 0; } }
+html.touch .keysbar { display: none; }
+
+#tags { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.tag { position: absolute; left: 0; top: 0; display: none; align-items: center; gap: 0; font-family: var(--display); font-size: 17px; letter-spacing: 0.06em; white-space: nowrap; transform-origin: 50% 100%; will-change: transform; box-shadow: 0 3px 10px rgba(0,0,0,0.25); }
+.tag b { background: var(--dot); color: #fff; padding: 1px 7px 0; font-weight: 600; }
+.tag span { background: rgba(255,255,255,0.92); color: var(--ink); padding: 1px 9px 0; font-weight: 500; }
+
+.intro { position: absolute; left: 0; right: 0; bottom: 16%; text-align: center; pointer-events: none; opacity: 0; transition: opacity 0.6s; }
+.intro.on { opacity: 1; }
+.intro .it { font-family: var(--display); font-size: clamp(56px, 11vh, 112px); font-style: italic; font-weight: 600; line-height: 0.9; color: #fff; text-shadow: 0 4px 30px rgba(16,21,31,0.45); }
+.intro .is { display: inline-block; font-family: var(--body); font-weight: 700; letter-spacing: 0.3em; color: #fff; background: var(--orange); padding: 4px 14px; font-size: clamp(12px, 1.9vh, 17px); }
+
+/* ---------------------------------------------------------------- touch */
+#touch { position: absolute; inset: 0; pointer-events: none; }
+#touch .tbtn { pointer-events: auto; touch-action: none; position: absolute; display: grid; place-items: center; font-family: var(--display); letter-spacing: 0.12em; font-size: 20px; color: #fff; background: rgba(16, 21, 31, 0.32); border: 2px solid rgba(255, 255, 255, 0.75); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); transition: background 0.05s, transform 0.05s; text-shadow: 0 1px 2px rgba(0,0,0,0.4); }
+#touch .tbtn.on { background: rgba(255, 107, 26, 0.6); border-color: #fff; transform: scale(0.95); }
+.steerbtn { bottom: calc(26px + var(--sb)); width: clamp(84px, 15vh, 128px); height: clamp(110px, 21vh, 170px); border-radius: 20px; }
+.steerbtn svg { width: 46%; height: 46%; }
+.steerbtn[data-ctl=left] { left: calc(20px + var(--sl)); }
+.steerbtn[data-ctl=right] { left: calc(36px + var(--sl) + clamp(84px, 15vh, 128px)); }
+.pedal { bottom: calc(26px + var(--sb)); border-radius: 18px; }
+.pedal.gas { right: calc(20px + var(--sr)); width: clamp(84px, 14vh, 120px); height: clamp(150px, 30vh, 230px); border-color: rgba(125, 255, 176, 0.9) !important; }
+.pedal.brake { right: calc(36px + var(--sr) + clamp(84px, 14vh, 120px)); width: clamp(80px, 13vh, 110px); height: clamp(96px, 18vh, 140px); border-color: rgba(255, 120, 120, 0.9) !important; }
+.round { border-radius: 50%; width: clamp(74px, 13vh, 104px); height: clamp(74px, 13vh, 104px); font-size: 17px !important; }
+.round.tnitro { right: calc(36px + var(--sr) + clamp(84px, 14vh, 120px)); bottom: calc(40px + var(--sb) + clamp(96px, 18vh, 140px)); border-color: rgba(120, 190, 255, 0.95) !important; }
+.round.tdrift { right: calc(44px + var(--sr) + clamp(84px, 14vh, 120px) + clamp(74px, 13vh, 104px)); bottom: calc(26px + var(--sb)); border-color: rgba(255, 210, 90, 0.95) !important; }
+html.touch #hud .bl { left: auto; right: calc(16px + var(--sr)); bottom: auto; top: calc(150px + var(--st)); }
+html.touch #minimap { width: clamp(120px, 21vh, 170px); height: clamp(120px, 21vh, 170px); }
+html.touch #hud .br { right: auto; left: 50%; transform: translateX(-50%); bottom: calc(2px + var(--sb)); width: clamp(150px, 24vh, 200px); }
+html.touch .stand { width: 168px; font-size: 15px; }
+html.touch .stand li:nth-child(n+6):not(.me) { display: none; }
+html.touch .slip { bottom: calc(30% + var(--sb)); }
+
+/* ---------------------------------------------------------------- screens */
+.screen { position: absolute; inset: 0; padding: calc(20px + var(--st)) max(16px, calc(24px + var(--sr))) calc(20px + var(--sb)) max(16px, calc(24px + var(--sl))); }
+.cta { font-family: var(--display); font-size: 34px; letter-spacing: 0.14em; text-transform: uppercase; padding: 10px 46px 4px; color: #fff; background: var(--orange); clip-path: polygon(14px 0, 100% 0, calc(100% - 14px) 100%, 0 100%); transition: filter 0.15s, transform 0.15s; box-shadow: 0 8px 20px rgba(255,107,26,0.35); }
+.cta:hover { filter: brightness(1.08); transform: translateY(-1px); }
+.cta:active { transform: translateY(1px) scale(0.98); }
+.ghost { font-family: var(--body); font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; font-size: 14px; padding: 9px 16px; border-radius: 8px; color: var(--ink); }
+.ghost:hover { border-color: var(--orange); }
+
+.loading { display: grid; place-items: center; align-content: center; gap: 14px; background: radial-gradient(ellipse at center, #ffffff, var(--bg)); }
+.loading .logo { font-size: clamp(56px, 10vw, 98px); }
+.loadtrack { width: min(320px, 70vw); height: 4px; background: rgba(16,21,31,0.1); overflow: hidden; border-radius: 2px; }
+#loadBar { height: 100%; background: var(--orange); transform-origin: left; transform: scaleX(0.02); transition: transform 0.25s; }
+#loadMsg { color: var(--dim); letter-spacing: 0.2em; font-size: 13px; font-weight: 700; text-transform: uppercase; }
+
+.logo { font-family: var(--display); font-weight: 700; font-style: italic; line-height: 0.8; letter-spacing: 0.02em; display: flex; }
+.logo .l1 { color: var(--ink); }
+.logo .l2 { color: var(--orange); padding-right: 0.08em; }
+
+.title { display: grid; align-content: center; justify-items: start; gap: 18px; background: linear-gradient(90deg, rgba(238,242,246,0.96) 0%, rgba(238,242,246,0.75) 40%, rgba(238,242,246,0) 72%); }
+.title .logo { font-size: clamp(78px, 15vw, 172px); }
+.title .tag { max-width: 34ch; color: var(--dim); font-size: clamp(17px, 2.4vh, 21px); font-weight: 600; line-height: 1.35; margin: 0; }
+.title .row { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+.keys { display: grid; grid-template-columns: auto auto; gap: 5px 14px; font-size: 14px; color: var(--dim); font-weight: 600; letter-spacing: 0.04em; margin-top: 6px; }
+.keys kbd { font-family: var(--body); font-weight: 700; color: var(--ink); border: 1px solid var(--line); padding: 0 6px; border-radius: 4px; background: #fff; box-shadow: 0 1px 0 rgba(16,21,31,0.12); }
+html.touch .keys.desk { display: none; }
+html:not(.touch) .keys.tch { display: none; }
+
+.garage { pointer-events: none; display: grid; grid-template-columns: minmax(0, 300px) 1fr minmax(0, 330px); grid-template-rows: auto 1fr auto; gap: 14px; }
+.garage > * { pointer-events: auto; }
+.gbar { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: center; padding-right: 56px; }
+.gbar .logo { font-size: 40px; }
+.carinfo { grid-column: 1; grid-row: 2; align-self: center; display: grid; gap: 6px; }
+.carinfo .idx { font-family: var(--display); color: var(--dim); font-size: 20px; letter-spacing: 0.1em; }
+.carinfo h2 { font-family: var(--display); font-size: clamp(48px, 8vh, 72px); font-style: italic; font-weight: 600; margin: 0; line-height: 0.85; text-wrap: balance; }
+.carinfo .klass { color: var(--orange); font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; font-size: 13px; }
+.stats { display: grid; gap: 8px; margin: 12px 0 4px; }
+.stat { display: grid; grid-template-columns: 96px 1fr; align-items: center; gap: 10px; font-weight: 700; font-size: 13px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--dim); }
+.stat .bar { height: 7px; background: rgba(16,21,31,0.1); position: relative; overflow: hidden; transform: skewX(-20deg); }
+.stat .bar::after { content: ""; position: absolute; inset: 0; transform-origin: left; transform: scaleX(var(--v, 0.5)); background: var(--orange); transition: transform 0.5s cubic-bezier(.2,1,.3,1); }
+.topspeed { display: flex; gap: 10px; align-items: baseline; color: var(--dim); font-weight: 700; letter-spacing: 0.12em; font-size: 13px; text-transform: uppercase; }
+.topspeed b { font-family: var(--display); color: var(--ink); font-size: 30px; letter-spacing: 0.02em; font-weight: 500; }
+.carnav { grid-column: 2; grid-row: 3; justify-self: center; align-self: end; display: flex; gap: 12px; }
+.arrow { width: 56px; height: 56px; border-radius: 12px; font-size: 34px; line-height: 1; display: grid; place-items: center; color: var(--ink); }
+.arrow:hover { color: var(--orange); }
+.side { grid-column: 3; grid-row: 2 / 4; display: grid; align-content: end; gap: 12px; }
+.panel { border-radius: 14px; padding: 12px 14px; }
+.plabel { font-weight: 700; letter-spacing: 0.16em; font-size: 12px; text-transform: uppercase; color: var(--dim); margin-bottom: 8px; display: flex; justify-content: space-between; gap: 8px; }
+.plabel b { color: var(--ink); letter-spacing: 0.08em; }
+.swatches { display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px; }
+.swatch { aspect-ratio: 1; border-radius: 50%; background: var(--c); border: 2px solid #fff; box-shadow: 0 1px 4px rgba(16,21,31,0.25), inset 0 -4px 8px rgba(0,0,0,0.2); transition: transform 0.15s; }
+.swatch[aria-pressed=true] { transform: scale(1.14); box-shadow: 0 0 0 2px var(--orange), 0 2px 8px rgba(16,21,31,0.3); }
+.livery { display: grid; grid-template-columns: 1fr 1fr; margin-top: 10px; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.livery button { padding: 7px 4px 5px; font-weight: 700; letter-spacing: 0.1em; font-size: 13px; text-transform: uppercase; color: var(--dim); }
+.livery button[aria-pressed=true] { background: var(--ink); color: #fff; }
+.tracks { display: grid; gap: 7px; }
+.trackcard { display: grid; grid-template-columns: 92px 1fr; gap: 10px; align-items: center; text-align: left; padding: 6px; border-radius: 10px; border: 1px solid var(--line); background: rgba(255,255,255,0.6); transition: border-color 0.15s, background 0.15s; }
+.trackcard canvas { width: 92px; height: 58px; display: block; background: #f3f5f8; border-radius: 6px; }
+.trackcard .ti { display: grid; gap: 1px; min-width: 0; }
+.trackcard b { font-family: var(--display); font-size: 24px; font-weight: 500; line-height: 0.95; letter-spacing: 0.02em; }
+.trackcard span { font-size: 13px; color: var(--dim); font-weight: 600; }
+.trackcard em { font-style: normal; font-size: 12px; color: var(--dim); letter-spacing: 0.08em; text-transform: uppercase; }
+.trackcard[aria-pressed=true] { border-color: var(--orange); background: #fff; box-shadow: 0 0 0 1px var(--orange); }
+.race { justify-self: stretch; }
+
+.pause, .results { display: grid; place-items: center; background: rgba(238,242,246,0.55); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+.card { background: var(--surface-solid); border: 1px solid var(--line); border-radius: 18px; box-shadow: 0 20px 60px rgba(16,21,31,0.2); padding: 22px 24px; width: min(560px, 100%); max-height: 100%; overflow: auto; display: grid; gap: 14px; }
+.card h2 { font-family: var(--display); font-weight: 600; font-style: italic; font-size: 56px; line-height: 0.8; margin: 0; }
+.card .subt { color: var(--orange); font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; font-size: 13px; }
+.menu { display: grid; gap: 8px; }
+.menu button { text-align: left; font-family: var(--display); font-size: 28px; letter-spacing: 0.06em; padding: 8px 14px 2px; border-radius: 10px; border: 1px solid var(--line); background: #f6f8fa; transition: border-color 0.12s, background 0.12s, padding 0.12s; }
+.menu button:hover, .menu button:focus-visible { border-color: var(--orange); background: #fff4ed; padding-left: 20px; }
+.results .card { width: min(720px, 100%); }
+.restable { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.restable th { text-align: left; font-size: 11px; letter-spacing: 0.18em; color: var(--dim); font-weight: 700; padding: 4px 8px; text-transform: uppercase; }
+.restable td { padding: 5px 8px; border-top: 1px solid var(--line); font-weight: 600; font-size: 15px; }
+.restable td.p { font-family: var(--display); font-size: 24px; font-style: italic; width: 34px; line-height: 1; }
+.restable td.n i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 8px; vertical-align: middle; }
+.restable td.c { color: var(--dim); }
+.restable tr.me td { background: var(--orange); color: #fff; }
+.tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.tile { border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; display: grid; background: #f8f9fb; }
+.tile span { font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--dim); font-weight: 700; }
+.tile b { font-family: var(--display); font-size: 30px; font-weight: 500; line-height: 1; font-variant-numeric: tabular-nums; }
+.tile.style b { color: var(--orange); }
+.btnrow { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.btnrow .ghost { border: 1px solid var(--line); background: #fff; }
+
+.modal { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(238,242,246,0.6); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); padding: calc(16px + var(--st)) max(16px, var(--sr)) calc(16px + var(--sb)) max(16px, var(--sl)); z-index: 5; }
+.modal .card { width: min(480px, 100%); }
+.field { display: grid; gap: 6px; }
+.field > span { font-size: 12px; letter-spacing: 0.16em; font-weight: 700; color: var(--dim); text-transform: uppercase; }
+.seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.seg label { text-align: center; padding: 8px 4px; font-weight: 700; letter-spacing: 0.06em; cursor: pointer; color: var(--dim); }
+.seg input { position: absolute; opacity: 0; pointer-events: none; }
+.seg label:has(input:checked) { background: var(--ink); color: #fff; }
+.seg label:has(input:focus-visible) { outline: 2px solid var(--orange); outline-offset: -2px; }
+.toggle { display: flex; justify-content: space-between; align-items: center; font-weight: 700; letter-spacing: 0.04em; gap: 12px; }
+.toggle input { width: 22px; height: 22px; accent-color: var(--orange); }
+input[type=range] { width: 100%; accent-color: var(--orange); }
+.note { font-size: 13px; color: var(--dim); font-weight: 600; margin: 0; }
+
+#fps { position: absolute; left: 50%; top: calc(4px + var(--st)); transform: translateX(-50%); font-size: 12px; color: var(--ink); background: rgba(255,255,255,0.7); padding: 1px 8px; border-radius: 10px; font-weight: 700; letter-spacing: 0.1em; pointer-events: none; z-index: 9; }
+#btnMute { position: absolute; right: calc(16px + var(--sr)); top: calc(14px + var(--st)); z-index: 6; }
+html[data-state=race] #btnMute, html[data-state=loading] #btnMute { display: none; }
+#rotate { display: none; }
+@media (orientation: portrait) and (pointer: coarse) {
+  #rotate { position: absolute; inset: 0; z-index: 20; display: grid; place-items: center; text-align: center; padding: 32px; background: var(--bg); color: var(--ink); font-family: var(--display); font-size: 34px; letter-spacing: 0.06em; line-height: 1; }
+}
+@media (max-width: 900px) {
+  .garage { grid-template-columns: minmax(0, 1fr) minmax(0, 290px); grid-template-rows: auto 1fr auto; }
+  .carinfo { grid-column: 1; grid-row: 2; align-self: start; }
+  .carnav { grid-column: 1; grid-row: 3; justify-self: start; }
+  .side { grid-column: 2; grid-row: 2 / 4; }
+  .stats { display: none; }
+  .carinfo h2 { font-size: 42px; }
+  .trackcard { grid-template-columns: 70px 1fr; }
+  .trackcard canvas { width: 70px; height: 44px; }
+  .trackcard b { font-size: 20px; }
+}
+@media (max-height: 560px) {
+  .gbar .logo { font-size: 30px; }
+  .side { gap: 7px; }
+  .panel { padding: 8px 10px; }
+  .trackcard span { display: none; }
+  .cta { font-size: 28px; padding: 8px 36px 2px; }
+  .card h2 { font-size: 42px; }
+  .menu button { font-size: 22px; }
+  .stand { display: none; }
+}
+@media (max-width: 560px) {
+  .garage { grid-template-columns: 1fr; grid-template-rows: auto auto 1fr auto; }
+  .side { grid-column: 1; grid-row: 4; }
+  .carnav { grid-row: 3; align-self: end; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .chip, .msg.on, .count.on, .drift, .keysbar { animation: none !important; transition: none !important; }
+}
+</style>
+
+<div id="app">
+  <canvas id="gl"></canvas>
+  <canvas id="speedlines"></canvas>
+  <div id="tags"></div>
+  <div id="intro" class="intro"><div class="it" id="introTitle"></div><div class="is" id="introSub"></div></div>
+
+  <div id="hud" hidden>
+    <div class="tl">
+      <div class="poslap glass">
+        <div><small>POS</small><b id="hPos">1</b><span class="of">/<span id="hPosOf">9</span></span></div>
+        <div><small>LAP</small><b id="hLap">1</b><span class="of">/<span id="hLaps">3</span></span></div>
+      </div>
+      <ol id="hStand" class="stand"></ol>
+    </div>
+    <div class="tc">
+      <div id="hDrift" class="drift"><span class="dp" id="hDriftPts">0</span><span class="dm" id="hDriftMul">×1.0</span><span class="dl">DRIFT</span></div>
+      <div id="hChips" class="chips"></div>
+      <div id="hHeat" class="heat glass">
+        <div class="hl" id="hHeatLbl">HEAT</div>
+        <div class="hb"><i id="hHeatBar"></i><span class="t1"></span><span class="t2"></span></div>
+        <div class="bb"><i id="hBustBar"></i></div>
+      </div>
+    </div>
+    <div class="tr">
+      <div class="timer glass">
+        <div class="time" id="hTime">00:00.00</div>
+        <div class="laprow"><span>LAP</span><b id="hLapTime">--</b><span>BEST</span><b id="hBest">--</b></div>
+      </div>
+      <button id="btnPause" class="iconbtn glass" aria-label="Pause">II</button>
+    </div>
+    <div class="bl"><canvas id="minimap"></canvas><div class="mmname" id="hTrack"></div></div>
+    <div class="br">
+      <div class="gaugebg glass"></div>
+      <svg viewBox="0 0 200 200" class="gauge" aria-hidden="true">
+        <circle cx="100" cy="100" r="78" class="g-bg"></circle>
+        <circle cx="100" cy="100" r="78" class="g-red"></circle>
+        <circle cx="100" cy="100" r="78" class="g-rpm" id="hRpm"></circle>
+        <circle cx="100" cy="100" r="64" class="g-nbg"></circle>
+        <circle cx="100" cy="100" r="64" class="g-nitro" id="hNitroArc"></circle>
+        <g id="gTicks"></g>
+      </svg>
+      <div class="spd"><b id="hSpd">0</b><span>KM/H</span></div>
+      <div class="gear" id="hGear">GEAR N</div>
+      <div class="npct"><span>NITRO</span><b id="hNitroPct">30%</b></div>
+    </div>
+    <div id="hSlip" class="slip">SLIPSTREAM</div>
+    <div class="keysbar glass"><span><b>WASD</b>DRIVE</span><span><b>SPACE</b>DRIFT</span><span><b>SHIFT</b>NITRO</span><span><b>R</b>RESET</span><span><b>C</b>CAMERA</span><span><b>ESC</b>PAUSE</span></div>
+    <div id="hMsg" class="msg"></div>
+    <div id="hCount" class="count"></div>
+  </div>
+
+  <div id="touch" hidden>
+    <button class="tbtn steerbtn" data-ctl="left" aria-label="Steer left"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4 7 12l8 8"/></svg></button>
+    <button class="tbtn steerbtn" data-ctl="right" aria-label="Steer right"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m9 4 8 8-8 8"/></svg></button>
+    <button class="tbtn round tnitro" data-ctl="nitro">NITRO</button>
+    <button class="tbtn round tdrift" data-ctl="drift">DRIFT</button>
+    <button class="tbtn pedal brake" data-ctl="brake">BRAKE</button>
+    <button class="tbtn pedal gas" data-ctl="gas">GAS</button>
+  </div>
+
+  <section id="scr-loading" class="screen loading">
+    <div class="logo"><span class="l1">DRIFT</span><span class="l2">LINE</span></div>
+    <div class="loadtrack"><div id="loadBar"></div></div>
+    <div id="loadMsg">Loading cars from the garage</div>
+  </section>
+
+  <section id="scr-title" class="screen title" hidden>
+    <div class="logo"><span class="l1">DRIFT</span><span class="l2">LINE</span></div>
+    <p class="tag">Street racing against 8 rivals. Drift to charge your nitro, slipstream past the pack, thread the traffic and lose the police.</p>
+    <div class="row">
+      <button id="btnPlay" class="cta">Play</button>
+      <button id="btnTitleSettings" class="ghost glass">Settings</button>
+    </div>
+    <div class="keys desk">
+      <span><kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> / arrows</span><span>Drive and steer</span>
+      <span><kbd>Space</kbd></span><span>Handbrake drift (fills nitro)</span>
+      <span><kbd>Shift</kbd></span><span>Fire nitro</span>
+      <span><kbd>W</kbd> at GO</span><span>Press right as GO hits for a perfect launch</span>
+      <span><kbd>C</kbd> <kbd>R</kbd> <kbd>Esc</kbd></span><span>Camera · reset car · pause</span>
+    </div>
+    <div class="keys tch">
+      <span>Left side</span><span>Steer left and right</span>
+      <span>Right side</span><span>Gas, brake, drift and nitro</span>
+      <span>Drift</span><span>Hold while turning to slide and charge nitro</span>
+    </div>
+  </section>
+
+  <section id="scr-garage" class="screen garage" hidden>
+    <header class="gbar">
+      <div class="logo"><span class="l1">DRIFT</span><span class="l2">LINE</span></div>
+      <button id="btnSettings" class="ghost glass">Settings</button>
+    </header>
+    <div class="carinfo">
+      <div class="idx" id="carIdx">1 / 4</div>
+      <h2 id="carName">Halcyon GT</h2>
+      <div class="klass" id="carClass"></div>
+      <div class="stats">
+        <div class="stat"><span>Speed</span><div class="bar" id="bar-speed"></div></div>
+        <div class="stat"><span>Accel</span><div class="bar" id="bar-accel"></div></div>
+        <div class="stat"><span>Handling</span><div class="bar" id="bar-handling"></div></div>
+        <div class="stat"><span>Drift</span><div class="bar" id="bar-drift"></div></div>
+      </div>
+      <div class="topspeed"><span>Top speed</span><b id="topSpeed">300 km/h</b></div>
+    </div>
+    <div class="carnav">
+      <button id="btnPrev" class="arrow glass" aria-label="Previous car">‹</button>
+      <button id="btnNext" class="arrow glass" aria-label="Next car">›</button>
+    </div>
+    <div class="side">
+      <div class="panel glass">
+        <div class="plabel"><span>Paint</span><b id="paintName"></b></div>
+        <div id="swatches" class="swatches"></div>
+        <div class="livery" role="group" aria-label="Livery">
+          <button data-livery="solid" aria-pressed="false">Solid</button>
+          <button data-livery="stripes" aria-pressed="true">Racing stripes</button>
+        </div>
+      </div>
+      <div class="panel glass">
+        <div class="plabel"><span>Track</span><span>3 laps · 9 cars</span></div>
+        <div id="tracks" class="tracks"></div>
+      </div>
+      <button id="btnRace" class="cta race">Race</button>
+    </div>
+  </section>
+
+  <section id="scr-pause" class="screen pause" hidden>
+    <div class="card">
+      <h2>Paused</h2>
+      <div class="menu">
+        <button id="btnResume">Resume</button>
+        <button id="btnRestart">Restart race</button>
+        <button id="btnSettings2">Settings</button>
+        <button id="btnQuit">Quit to garage</button>
+      </div>
+      <p class="note">Keyboard: W A S D or arrows to drive · Space to drift · Shift for nitro · C camera · R reset · M mute</p>
+    </div>
+  </section>
+
+  <section id="scr-results" class="screen results" hidden>
+    <div class="card">
+      <div>
+        <h2 id="resTitle">VICTORY</h2>
+        <div class="subt" id="resSub"></div>
+      </div>
+      <div class="tiles">
+        <div class="tile style"><span>Style points</span><b id="resStyle">0</b></div>
+        <div class="tile"><span>Best lap</span><b id="resBest">--</b></div>
+        <div class="tile"><span>Times busted</span><b id="resBusts">0</b></div>
+      </div>
+      <div style="overflow-x:auto">
+        <table class="restable">
+          <thead><tr><th>Pos</th><th>Driver</th><th>Car</th><th>Time</th><th>Best lap</th></tr></thead>
+          <tbody id="resBody"></tbody>
+        </table>
+      </div>
+      <p class="note">A ~ marks a projected time for drivers still on track.</p>
+      <div class="btnrow">
+        <button id="btnAgain" class="cta">Race again</button>
+        <button id="btnResGarage" class="ghost">Back to garage</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="scr-settings" class="modal" hidden>
+    <div class="card">
+      <h2>Settings</h2>
+      <label class="field"><span>Volume</span><input id="setVolume" type="range" min="0" max="1" step="0.05"></label>
+      <div class="field"><span>Graphics</span>
+        <div class="seg">
+          <label><input type="radio" name="quality" value="low">Low</label>
+          <label><input type="radio" name="quality" value="medium">Medium</label>
+          <label><input type="radio" name="quality" value="high">High</label>
+          <label><input type="radio" name="quality" value="ultra">Ultra</label>
+        </div>
+      </div>
+      <p class="note">Ultra adds sharper shadows, denser palms, speed motion blur and sun glare. If the game stutters, step down a level.</p>
+      <p class="note" id="qualityNote" hidden>New graphics settings apply fully from the next race.</p>
+      <div class="field"><span>Camera</span>
+        <div class="seg">
+          <label><input type="radio" name="camera" value="0">Chase</label>
+          <label><input type="radio" name="camera" value="1">Far</label>
+          <label><input type="radio" name="camera" value="2">Bumper</label>
+        </div>
+      </div>
+      <label class="toggle"><span>Auto-accelerate on touch screens</span><input id="setAutoGas" type="checkbox"></label>
+      <label class="toggle"><span>Show frame rate</span><input id="setFps" type="checkbox"></label>
+      <div class="btnrow"><button id="btnCloseSettings" class="cta">Done</button></div>
+    </div>
+  </section>
+
+  <button id="btnMute" class="iconbtn glass" aria-label="Mute sound" aria-pressed="false">♪</button>
+  <div id="fps" hidden></div>
+  <div id="rotate">Turn your device sideways to race</div>
+</div>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+} }
+</script>
+<script type="module" src="js/main.js"></script>
+
+</body>
+</html>
