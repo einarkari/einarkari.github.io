@@ -23,9 +23,24 @@ const dampAngle = (a, b, k, dt) => a + wrapA(b - a) * (1 - Math.exp(-k * dt));
 
 // ------------------------------------------------------------------ settings
 const isTouch = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window;
-const DEFAULTS = { volume: 0.8, quality: 'high', camera: 0, autoGas: false, fps: false, car: 0, paint: 7, stripes: true, track: 0 };
+const DEFAULTS = { volume: 0.8, quality: 'high', camera: 0, autoGas: false, fps: false, car: 0, paint: 7, stripes: true, track: 0, difficulty: 'normal', traffic: true, police: true };
+// AI pace: skill scaling, slow-down when ahead of you, catch-up when behind you
+const DIFFICULTY = {
+  easy: { label: 'Easy', skill: s => s * 0.9, ahead: 0.11, behind: 0.03 },
+  normal: { label: 'Normal', skill: s => s, ahead: 0.075, behind: 0.075 },
+  hard: { label: 'Hard', skill: s => 1 - (1 - s) * 0.35, ahead: 0.03, behind: 0.09 },
+};
+function updateRaceOpts() {
+  const extra = [!settings.traffic && 'no traffic', !settings.police && 'no police'].filter(Boolean).join(' · ');
+  $('raceOpts').textContent = `3 laps · ${diff().label}${extra ? ' · ' + extra : ''}`;
+}
+function raceOptsChanged() { saveSettings(); updateRaceOpts(); if (race) $('raceNote').hidden = false; }
+const diff = () => DIFFICULTY[settings.difficulty] || DIFFICULTY.normal;
 const settings = { ...DEFAULTS };
 try { Object.assign(settings, JSON.parse(localStorage.getItem('driftline.v2') || '{}')); } catch (e) { /* storage unavailable */ }
+// phones: start on Medium graphics so the GPU and memory budget hold up (can be raised in Settings)
+if (!('quality' in (() => { try { return JSON.parse(localStorage.getItem('driftline.v2') || '{}'); } catch (e) { return {}; } })())
+  && isTouch && Math.min(screen.width, screen.height) < 500) settings.quality = 'medium';
 const saveSettings = () => { try { localStorage.setItem('driftline.v2', JSON.stringify(settings)); } catch (e) { /* ignore */ } };
 
 // ------------------------------------------------------------------ renderer
@@ -294,7 +309,7 @@ function startRace() {
     const car = new Vehicle(spec, vis, { name: NAMES[i] });
     car.mapColor = MAP_COLORS[i];
     car.under = UNDERGLOW[i];
-    car.ai = new RacerAI(car, track, skills[i], { drifter: i % 3 !== 1, bias: ((i % 3) - 1) * 1.6 });
+    car.ai = new RacerAI(car, track, diff().skill(skills[i]), { drifter: i % 3 !== 1, bias: ((i % 3) - 1) * 1.6 });
     ais.push(car);
   }
   const grid = [...ais.slice(0, 6), player, ...ais.slice(6)];
@@ -309,9 +324,10 @@ function startRace() {
     scene.add(car.root);
   });
 
-  const traffic = new TrafficManager(track, factory, scene, settings.quality === 'low' ? (def.theme === 'city' ? 10 : 7) : (def.theme === 'city' ? 16 : def.theme === 'coast' ? 9 : 11));
+  const traffic = new TrafficManager(track, factory, scene, !settings.traffic ? 0 : settings.quality === 'low' ? (def.theme === 'city' ? 10 : 7) : (def.theme === 'city' ? 16 : def.theme === 'coast' ? 9 : 11));
   traffic.initialPlace();
   const police = new PoliceManager(track, factory, scene, {
+    enabled: settings.police,
     onSpawn: n => { hud.message(n > 1 ? 'BACKUP INCOMING' : 'POLICE PURSUIT', 'police', 2); audio.heatUp(); },
     onBusted: () => { player.bustedT = 3.2; hud.message('BUSTED', 'police big', 3); audio.busted(); race.shake += 0.4; race.busts++; },
     onEscaped: () => { hud.message('ESCAPED', 'good', 2); audio.escaped(); player.nitro = Math.min(1, player.nitro + 0.35); hud.chip('ESCAPE BONUS', '+35% NITRO', 'nitro'); race.style += 2500; },
@@ -439,7 +455,8 @@ function physicsStep(h) {
   aiCtx.rubber = c => c.rubber;
   for (const c of R.ais) {
     const gap = c.progress - p.progress;
-    c.rubber = p.finished ? 1 : 1 - clamp(gap / 380, -1, 1) * 0.075;
+    const g = clamp(gap / 380, -1, 1), D = diff();
+    c.rubber = p.finished ? 1 : 1 - g * (g > 0 ? D.ahead : D.behind);
     c.topMul = c.rubber;
     c.ai.update(h, aiCtx);
   }
@@ -871,8 +888,8 @@ function loop(now) {
   if (settings.fps) { fpsAcc += dt; fpsN++; if (fpsAcc > 0.5) { $('fps').textContent = Math.round(fpsN / fpsAcc) + ' fps · ' + pixelRatio.toFixed(2) + 'x'; fpsAcc = 0; fpsN = 0; } }
   handleActions();
   if (state === 'race' || state === 'results') {
+    adaptResolution(dt); // before drawing: resizing the canvas clears it
     raceFrame(dt);
-    adaptResolution(dt);
   } else if (state === 'paused') {
     // keep the frozen frame
   } else if (state === 'garage' || state === 'title' || state === 'settings') {
@@ -1002,9 +1019,14 @@ function bindUI() {
     if (race) $('qualityNote').hidden = false;
   }));
   document.querySelectorAll('[name=camera]').forEach(r => r.addEventListener('change', e => { settings.camera = +e.target.value; cam.mode = settings.camera; saveSettings(); }));
+  document.querySelectorAll('[name=difficulty]').forEach(r => r.addEventListener('change', e => { settings.difficulty = e.target.value; raceOptsChanged(); }));
+  $('setTraffic').addEventListener('change', e => { settings.traffic = e.target.checked; raceOptsChanged(); });
+  $('setPolice').addEventListener('change', e => { settings.police = e.target.checked; raceOptsChanged(); });
+  $('raceOpts').addEventListener('click', () => $('btnSettings').click());
   $('setAutoGas').addEventListener('change', e => { settings.autoGas = e.target.checked; input.autoGas = settings.autoGas; saveSettings(); });
   $('setFps').addEventListener('change', e => { settings.fps = e.target.checked; $('fps').hidden = !settings.fps; saveSettings(); });
   $('fps').hidden = !settings.fps;
+  updateRaceOpts();
 
   // keyboard shortcut on menus
   window.addEventListener('keydown', e => {
@@ -1023,6 +1045,10 @@ function syncSettingsUI() {
   document.querySelectorAll('[name=quality]').forEach(r => { r.checked = r.value === settings.quality; });
   document.querySelectorAll('[name=camera]').forEach(r => { r.checked = +r.value === settings.camera; });
   $('setAutoGas').checked = settings.autoGas;
+  document.querySelectorAll('[name=difficulty]').forEach(r => { r.checked = r.value === settings.difficulty; });
+  $('setTraffic').checked = settings.traffic;
+  $('setPolice').checked = settings.police;
+  updateRaceOpts();
   $('setFps').checked = settings.fps;
 }
 

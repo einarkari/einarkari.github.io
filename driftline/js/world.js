@@ -711,23 +711,25 @@ function hillsRing(cx, cz, layers, keep = () => true) {
 
 // ------------------------------------------------------------------ city (daytime)
 function facadeTextures() {
+  // black glass towers: dark frames, smoked windows with sky reflections
   const W = 512, H = 1024, cols = 16, rows = 32, cw = W / cols, ch = H / rows;
   const [c, g] = cvs(W, H);
-  g.fillStyle = '#d9dde2'; g.fillRect(0, 0, W, H);
+  g.fillStyle = '#121418'; g.fillRect(0, 0, W, H);
   for (let y = 0; y < rows; y++) {
     const band = Math.random() < 0.12;
     for (let x = 0; x < cols; x++) {
       const px = x * cw, py = y * ch;
-      g.fillStyle = band ? '#c7ccd2' : '#e3e6ea'; g.fillRect(px, py, cw, ch);
+      g.fillStyle = band ? '#1d2026' : '#16181d'; g.fillRect(px, py, cw, ch);
       const grd = g.createLinearGradient(px, py, px + cw * 0.6, py + ch);
       const r = Math.random();
-      const glass = r < 0.12 ? ['#26323f', '#3b4a5a'] : r < 0.55 ? ['#7d9bb8', '#b9cde0'] : ['#9fb6cc', '#e2ecf5'];
+      const glass = r < 0.2 ? ['#07090c', '#12161c'] : r < 0.7 ? ['#0e1319', '#26303b'] : ['#18202a', '#3a4756'];
       grd.addColorStop(0, glass[0]); grd.addColorStop(1, glass[1]);
       g.fillStyle = grd; g.fillRect(px + 3, py + 4, cw - 6, ch - 9);
-      if (Math.random() < 0.25) { g.fillStyle = 'rgba(255,255,255,0.55)'; g.fillRect(px + 3, py + 4, cw - 6, (ch - 9) * Math.random() * 0.5); }
+      if (Math.random() < 0.22) { g.fillStyle = 'rgba(170,200,230,0.16)'; g.fillRect(px + 3, py + 4, cw - 6, (ch - 9) * Math.random() * 0.5); }
+      if (Math.random() < 0.04) { g.fillStyle = 'rgba(255,214,150,0.55)'; g.fillRect(px + 5, py + 6, cw - 10, ch - 13); }
     }
   }
-  g.fillStyle = '#8f949b'; g.fillRect(0, 0, 12, 12);
+  g.fillStyle = '#1b1e23'; g.fillRect(0, 0, 12, 12);
   return toTex(c);
 }
 
@@ -760,10 +762,10 @@ function skylineTexture() {
   let x = 0;
   while (x < W) {
     const w = 18 + Math.random() * 60, h = 40 + Math.pow(Math.random(), 1.6) * 200;
-    const v = 170 + Math.random() * 30;
-    g.fillStyle = `rgb(${v - 10},${v},${v + 14})`;
+    const v = 46 + Math.random() * 22;
+    g.fillStyle = `rgb(${v - 4},${v},${v + 8})`;
     g.fillRect(x, H - h, w, h);
-    g.fillStyle = 'rgba(255,255,255,0.25)';
+    g.fillStyle = 'rgba(255,255,255,0.08)';
     g.fillRect(x, H - h, w * 0.3, h);
     x += w + Math.random() * 6;
   }
@@ -782,12 +784,14 @@ function buildCity(track, assets, ctx) {
     top: 0x4086d8, horizon: 0xd3e0ea, glow: 0x46413a, sunCol: 0xfff2da, clouds: 0.5,
     hemiSky: 0xd7e7ff, hemiGround: 0x8f8a80, hemi: 1.05, sunI: 3.1, envGround: 0x9c9fa3,
   });
-  const ground = new THREE.Mesh(new THREE.PlaneGeometry(5000, 5000), new THREE.MeshStandardMaterial({ color: 0x9da2a8, roughness: 0.95 }));
-  ground.rotation.x = -Math.PI / 2; ground.position.y = -0.05;
+  // ground sits well below the road and is pushed back in depth, so it never shows through the asphalt
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(5000, 5000, 40, 40), new THREE.MeshStandardMaterial({ color: 0x9da2a8, roughness: 0.95, polygonOffset: true, polygonOffsetFactor: 4, polygonOffsetUnits: 4 }));
+  ground.rotation.x = -Math.PI / 2; ground.position.y = -0.3;
   ground.receiveShadow = day.shadows;
   scene.add(ground);
 
-  const roadMat = new THREE.MeshStandardMaterial({ map: roadTexture(track, 'city'), roughness: 0.82, metalness: 0.02 });
+  // matte asphalt: a glossy road flared to white when driving toward the low sun
+  const roadMat = new THREE.MeshLambertMaterial({ map: roadTexture(track, 'city') });
   scene.add(buildRoad(track, roadMat));
   scene.add(startLine(track));
 
@@ -864,7 +868,7 @@ function buildCity(track, assets, ctx) {
   }
   const facade = facadeTextures();
   const bPos = [], bUv = [], bCol = [], bIdx = [];
-  const tints = [[1, 1, 1], [0.93, 0.9, 0.84], [0.8, 0.86, 0.94], [0.88, 0.9, 0.92], [0.72, 0.8, 0.9], [0.98, 0.94, 0.88]];
+  const tints = [[1, 1, 1], [0.9, 0.9, 0.92], [0.85, 0.9, 1], [1, 0.97, 0.92], [0.8, 0.82, 0.86], [0.95, 0.95, 1]];
   for (const b of blds) {
     const { cx, cz, ux, uz, w, d, h } = b;
     const vx = -uz, vz = ux;
@@ -884,7 +888,7 @@ function buildCity(track, assets, ctx) {
       bIdx.push(base, base + 2, base + 1, base, base + 3, base + 2);
     }
     const base = bPos.length / 3;
-    for (const [x, z] of corners) { bPos.push(x, h, z); bUv.push(0.005, 0.995); bCol.push(0.85, 0.86, 0.88); }
+    for (const [x, z] of corners) { bPos.push(x, h, z); bUv.push(0.005, 0.995); bCol.push(1, 1, 1); }
     bIdx.push(base, base + 2, base + 1, base, base + 3, base + 2);
   }
   const bGeo = new THREE.BufferGeometry();
@@ -893,7 +897,7 @@ function buildCity(track, assets, ctx) {
   bGeo.setAttribute('color', new THREE.Float32BufferAttribute(bCol, 3));
   bGeo.setIndex(bIdx);
   bGeo.computeVertexNormals();
-  const bMesh = new THREE.Mesh(bGeo, new THREE.MeshStandardMaterial({ map: facade, vertexColors: true, roughness: 0.42, metalness: 0.35, envMapIntensity: 1.1 }));
+  const bMesh = new THREE.Mesh(bGeo, new THREE.MeshStandardMaterial({ map: facade, vertexColors: true, roughness: 0.22, metalness: 0.6, envMapIntensity: 1.4 }));
   bMesh.castShadow = day.shadows && quality !== 'medium';
   bMesh.receiveShadow = day.shadows;
   scene.add(bMesh);

@@ -2,9 +2,16 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="description" content="Driftline: a 3D street racing game. Race 8 AI drivers, drift to fill nitro, dodge traffic and police.">
+<meta name="theme-color" content="#eef2f6">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Driftline">
+<meta name="format-detection" content="telephone=no">
 <link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-180.png">
 <style>:root{color-scheme:light;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}body{margin:0;font:14px system-ui}img{max-width:100%}[hidden]{display:none!important}</style>
 <title>Driftline</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -173,6 +180,30 @@ html.touch .stand { width: 168px; font-size: 15px; }
 html.touch .stand li:nth-child(n+6):not(.me) { display: none; }
 html.touch .slip { bottom: calc(30% + var(--sb)); }
 
+@media (max-height: 480px) {
+  /* phones in landscape: map under the position panel, smaller gauge, smaller controls */
+  html.touch #hud .bl { right: auto; left: calc(14px + var(--sl)); top: calc(78px + var(--st)); }
+  html.touch #minimap { width: 92px; height: 92px; }
+  html.touch .mmname { display: none; }
+  html.touch #hud .br { width: 128px; bottom: calc(12px + var(--sb)); }
+  html.touch .br .spd { top: 31%; }
+  html.touch .br .spd b { font-size: 38px; }
+  html.touch .br .spd span { font-size: 8px; letter-spacing: 0.18em; }
+  html.touch .br .gear { font-size: 13px; top: 70%; }
+  html.touch .br .npct { right: -64px; bottom: 6%; background: rgba(255,255,255,0.85); padding: 3px 7px 1px; border-radius: 8px; }
+  html.touch .br .npct span { font-size: 9px; }
+  html.touch .br .npct b { font-size: 18px; }
+  .steerbtn { bottom: calc(16px + var(--sb)); width: 82px; height: 104px; }
+  .steerbtn[data-ctl=right] { left: calc(30px + var(--sl) + 82px); }
+  .pedal { bottom: calc(16px + var(--sb)); }
+  .pedal.gas { width: 82px; height: 150px; }
+  .pedal.brake { right: calc(30px + var(--sr) + 82px); width: 76px; height: 92px; }
+  .round { width: 68px; height: 68px; font-size: 15px !important; }
+  .round.tnitro { right: calc(34px + var(--sr) + 82px); bottom: calc(26px + var(--sb) + 92px); }
+  .round.tdrift { right: calc(40px + var(--sr) + 82px + 76px); bottom: calc(16px + var(--sb)); }
+  html.touch .slip { bottom: calc(40% + var(--sb)); }
+}
+
 /* ---------------------------------------------------------------- screens */
 .screen { position: absolute; inset: 0; padding: calc(20px + var(--st)) max(16px, calc(24px + var(--sr))) calc(20px + var(--sb)) max(16px, calc(24px + var(--sl))); }
 .cta { font-family: var(--display); font-size: 34px; letter-spacing: 0.14em; text-transform: uppercase; padding: 10px 46px 4px; color: #fff; background: var(--orange); clip-path: polygon(14px 0, 100% 0, calc(100% - 14px) 100%, 0 100%); transition: filter 0.15s, transform 0.15s; box-shadow: 0 8px 20px rgba(255,107,26,0.35); }
@@ -264,6 +295,8 @@ html:not(.touch) .keys.tch { display: none; }
 .modal .card { width: min(480px, 100%); }
 .field { display: grid; gap: 6px; }
 .field > span { font-size: 12px; letter-spacing: 0.16em; font-weight: 700; color: var(--dim); text-transform: uppercase; }
+.optlink { font: inherit; font-size: 12px; font-weight: 700; letter-spacing: 0.06em; color: var(--ink); background: rgba(16,21,31,0.06); border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px; cursor: pointer; }
+.optlink:hover { border-color: var(--orange); }
 .seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
 .seg label { text-align: center; padding: 8px 4px; font-weight: 700; letter-spacing: 0.06em; cursor: pointer; color: var(--dim); }
 .seg input { position: absolute; opacity: 0; pointer-events: none; }
@@ -301,6 +334,30 @@ html[data-state=race] #btnMute, html[data-state=loading] #btnMute { display: non
   .card h2 { font-size: 42px; }
   .menu button { font-size: 22px; }
   .stand { display: none; }
+}
+@media (max-height: 480px) {
+  /* phones in landscape: compact garage that fits ~380px of height */
+  .screen.garage { padding-top: calc(10px + var(--st)); padding-bottom: calc(10px + var(--sb)); gap: 8px; }
+  .gbar .logo { font-size: 24px; }
+  #btnSettings { font-size: 12px; padding: 6px 12px; }
+  #btnMute { width: 38px; height: 38px; font-size: 18px; top: calc(8px + var(--st)); }
+  .carinfo h2 { font-size: 34px; }
+  .topspeed b { font-size: 24px; }
+  .arrow { width: 46px; height: 46px; font-size: 28px; }
+  .side { gap: 6px; }
+  .plabel { margin-bottom: 5px; font-size: 11px; align-items: center; }
+  .swatches { gap: 4px; }
+  .livery { margin-top: 6px; }
+  .livery button { font-size: 11px; padding: 5px 4px 3px; }
+  .tracks { grid-template-columns: repeat(3, 1fr); gap: 5px; }
+  .trackcard { grid-template-columns: 1fr; gap: 3px; padding: 4px; text-align: center; }
+  .trackcard canvas { width: 100%; height: 34px; }
+  .trackcard b { font-size: 15px; line-height: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .trackcard span, .trackcard em { display: none; }
+  .garage .cta.race { font-size: 24px; padding: 6px 20px 2px; }
+  .modal .card { padding: 14px 16px; gap: 10px; }
+  .modal .card h2 { font-size: 34px; }
+  .seg label { padding: 6px 4px; }
 }
 @media (max-width: 560px) {
   .garage { grid-template-columns: 1fr; grid-template-rows: auto auto 1fr auto; }
@@ -430,7 +487,7 @@ html[data-state=race] #btnMute, html[data-state=loading] #btnMute { display: non
         </div>
       </div>
       <div class="panel glass">
-        <div class="plabel"><span>Track</span><span>3 laps · 9 cars</span></div>
+        <div class="plabel"><span>Track</span><button id="raceOpts" class="optlink" type="button">3 laps · Normal</button></div>
         <div id="tracks" class="tracks"></div>
       </div>
       <button id="btnRace" class="cta race">Race</button>
@@ -496,6 +553,16 @@ html[data-state=race] #btnMute, html[data-state=loading] #btnMute { display: non
           <label><input type="radio" name="camera" value="2">Bumper</label>
         </div>
       </div>
+      <div class="field"><span>Difficulty</span>
+        <div class="seg">
+          <label><input type="radio" name="difficulty" value="easy">Easy</label>
+          <label><input type="radio" name="difficulty" value="normal">Normal</label>
+          <label><input type="radio" name="difficulty" value="hard">Hard</label>
+        </div>
+      </div>
+      <label class="toggle"><span>Traffic on the road</span><input id="setTraffic" type="checkbox"></label>
+      <label class="toggle"><span>Police chases</span><input id="setPolice" type="checkbox"></label>
+      <p class="note" id="raceNote" hidden>Race options apply from the next race.</p>
       <label class="toggle"><span>Auto-accelerate on touch screens</span><input id="setAutoGas" type="checkbox"></label>
       <label class="toggle"><span>Show frame rate</span><input id="setFps" type="checkbox"></label>
       <div class="btnrow"><button id="btnCloseSettings" class="cta">Done</button></div>

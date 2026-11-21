@@ -11,6 +11,8 @@ export class AudioEngine {
     if (this.ctx) { this.resume(); return; }
     const AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return;
+    // iPhone: play game sound even when the ring/silent switch is on
+    try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) { /* not supported */ }
     const ctx = this.ctx = new AC();
     this.master = ctx.createGain();
     this.master.gain.value = this.muted ? 0 : this.volume;

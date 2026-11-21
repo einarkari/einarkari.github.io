@@ -198,6 +198,7 @@ export class PoliceManager {
     this.factory = factory;
     this.scene = scene;
     this.hooks = hooks;
+    this.enabled = hooks.enabled !== false;
     this.heat = 0;
     this.cops = [];
     this.bust = 0;
@@ -216,7 +217,7 @@ export class PoliceManager {
     this.flash = 0;
   }
 
-  addHeat(v) { if (this.cooldown <= 0) this.heat = clamp(this.heat + v, 0, 100); }
+  addHeat(v) { if (this.enabled && this.cooldown <= 0) this.heat = clamp(this.heat + v, 0, 100); }
 
   get level() { return this.cops.length; }
 
@@ -247,6 +248,7 @@ export class PoliceManager {
     const T = this.track;
     this.cooldown = Math.max(0, this.cooldown - dt);
     this.flash += dt;
+    if (!this.enabled) return;
     if (!ctx.running || player.finished) {
       if (this.cops.length) this.clear(true);
       this.heat = Math.max(0, this.heat - dt * 10);
