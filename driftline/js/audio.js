@@ -1,4 +1,6 @@
-// Procedural Web Audio sound engine: engine, tires, wind, nitro, siren, impacts and UI cues.
+// Web Audio sound engine: recorded V12 engine loops (synth fallback), tires, wind, nitro, siren, impacts and UI cues.
+const ENGINE_LEVEL = 0.56;  // player engine bus
+const OPP_LEVEL = 0.16;     // nearest rival, scaled by distance
 export class AudioEngine {
   constructor() {
     this.ctx = null;
@@ -40,6 +42,83 @@ export class AudioEngine {
     this.siren = this._makeSiren(this.loops);
     this.ready = true;
     this.resume();
+    this._decodeEngine();
+  }
+
+  // ------------------------------------------------------------ recorded V12 engine
+  /** fetch the packed engine loops (assets/engine.json); decoded once audio is unlocked */
+  async loadEngine(url) {
+    try { this.engineData = await (await fetch(url)).json(); } catch (e) { return; }
+    this._decodeEngine();
+  }
+
+  async _decodeEngine() {
+    if (!this.ctx || !this.engineData || this.samples || this._decoding) return;
+    this._decoding = true;
+    try {
+      const out = {};
+      for (const [k, v] of Object.entries(this.engineData.loops)) {
+        const bin = Uint8Array.from(atob(v.data), c => c.charCodeAt(0));
+        // callback form: older Safari has no promise-returning decodeAudioData
+        const buf = await new Promise((res, rej) => this.ctx.decodeAudioData(bin.buffer, res, rej));
+        out[k] = { buf, fref: v.fref };
+      }
+      this.samples = out;
+      this.sEngine = this._makeSampleEngine(this.loops, false);
+      this.sOpp = this._makeSampleEngine(this.loops, true);
+      // the synth engine stays as a fallback; silence it now that the recording is ready
+      this.engine.out.gain.setTargetAtTime(0, this.ctx.currentTime, 0.05);
+      this.opp.out.gain.setTargetAtTime(0, this.ctx.currentTime, 0.05);
+    } catch (e) { /* keep the synth engine */ }
+    this._decoding = false;
+  }
+
+  /** looped recordings crossfaded by pitch: three on-throttle layers, a lift-off layer and an idle */
+  _makeSampleEngine(dest, simple) {
+    const ctx = this.ctx, S = this.samples;
+    const bus = ctx.createGain(); bus.gain.value = 0;
+    let pan = null;
+    if (simple && ctx.createStereoPanner) { pan = ctx.createStereoPanner(); bus.connect(pan).connect(dest); } else bus.connect(dest);
+    const voice = (k, to) => {
+      const src = ctx.createBufferSource(); src.buffer = S[k].buf; src.loop = true;
+      const g = ctx.createGain(); g.gain.value = 0;
+      src.connect(g).connect(to);
+      src.start(0, Math.random() * S[k].buf.duration);
+      return { src, g, fref: S[k].fref };
+    };
+    const onSum = ctx.createGain();
+    const onG = ctx.createGain(); onG.gain.value = 0; onSum.connect(onG).connect(bus);
+    // off-throttle at high revs: the same layers, muffled
+    const muf = ctx.createBiquadFilter(); muf.type = 'lowpass'; muf.frequency.value = 900; muf.Q.value = 0.7;
+    const mufG = ctx.createGain(); mufG.gain.value = 0; onSum.connect(muf).connect(mufG).connect(bus);
+    const layers = ['low', 'mid', 'high'].map(k => voice(k, onSum));
+    const dec = voice('decel', bus), idle = simple ? null : voice('idle', bus);
+    return { bus, pan, onG, mufG, layers, dec, idle };
+  }
+
+  _driveSampleEngine(E, rpm, throttle, cut, level, pitchMul, t) {
+    const f = (60 + rpm * 280) * pitchMul;
+    const lf = Math.log(f), k = 0.03;
+    const refs = E.layers.map(l => Math.log(l.fref));
+    E.layers.forEach((l, j) => {
+      const c = refs[j], lo = j ? refs[j - 1] : -9, hi = j < refs.length - 1 ? refs[j + 1] : 9;
+      const w = lf < c ? Math.min(1, Math.max(0, (lf - lo) / (c - lo))) : Math.min(1, Math.max(0, (hi - lf) / (hi - c)));
+      l.g.gain.setTargetAtTime(Math.sin(w * Math.PI / 2), t, k);
+      l.src.playbackRate.setTargetAtTime(f / l.fref, t, k);
+    });
+    const load = throttle * (1 - cut);
+    const idleW = E.idle ? Math.min(1, Math.max(0, (0.32 - rpm) / 0.12)) * (1 - throttle) : 0;
+    const decW = Math.min(1, Math.max(0, 1 - (f - 150) / 90));
+    const offAmt = (1 - load) * (0.35 + 0.3 * rpm) * (1 - idleW);
+    E.onG.gain.setTargetAtTime((0.55 + 0.45 * rpm) * load * (1 - idleW), t, cut > 0 ? 0.012 : 0.04);
+    E.mufG.gain.setTargetAtTime(offAmt * (1 - decW) * 0.75, t, 0.04);
+    E.dec.g.gain.setTargetAtTime(offAmt * decW * 0.9, t, 0.04);
+    E.dec.src.playbackRate.setTargetAtTime(f / E.dec.fref, t, k);
+    if (E.idle) {
+      E.idle.g.gain.setTargetAtTime(idleW * 0.6, t, 0.06);
+      E.idle.src.playbackRate.setTargetAtTime(f / E.idle.fref * 0.85, t, k);
+    }
+    E.bus.gain.setTargetAtTime(level * (1 - 0.55 * cut), t, cut > 0 ? 0.012 : 0.05);
   }
 
   resume() { if (this.ctx && this.ctx.state !== 'running') this.ctx.resume(); }
@@ -119,7 +198,8 @@ export class AudioEngine {
     e.lfo.frequency.setTargetAtTime(f0 * 0.5, t, k);
     e.filt.frequency.setTargetAtTime(380 + s.throttle * 1900 + rpm * 1600 + (s.boost ? 900 : 0), t, k);
     const eg = s.engineOn ? (0.085 + s.throttle * 0.13 + rpm * 0.05) * (s.shiftCut > 0 ? 0.35 : 1) : 0;
-    e.out.gain.setTargetAtTime(eg, t, s.shiftCut > 0 ? 0.01 : 0.05);
+    if (this.sEngine) this._driveSampleEngine(this.sEngine, rpm, s.throttle, s.shiftCut > 0 ? 1 : 0, s.engineOn ? ENGINE_LEVEL : 0, s.boost ? 1.03 : 1, t);
+    else e.out.gain.setTargetAtTime(eg, t, s.shiftCut > 0 ? 0.01 : 0.05);
 
     this.tire.g.gain.setTargetAtTime(Math.min(0.28, s.slip * 0.32), t, 0.05);
     this.tire.f.frequency.setTargetAtTime(1300 + s.slip * 900 + Math.sin(t * 13) * 120, t, 0.05);
@@ -138,8 +218,13 @@ export class AudioEngine {
     o.o2.frequency.setTargetAtTime(of * 0.5 * (s.oppDoppler || 1), t, 0.06);
     o.lfo.frequency.setTargetAtTime(of * 0.5, t, 0.06);
     o.filt.frequency.setTargetAtTime(700 + (s.oppRpm || 0) * 1200, t, 0.06);
-    o.out.gain.setTargetAtTime((s.oppLevel || 0) * 0.09, t, 0.08);
-    if (o.pan) o.pan.pan.setTargetAtTime(s.oppPan || 0, t, 0.08);
+    if (this.sOpp) {
+      this._driveSampleEngine(this.sOpp, s.oppRpm || 0.5, 1, 0, (s.oppLevel || 0) * OPP_LEVEL, s.oppDoppler || 1, t);
+      if (this.sOpp.pan) this.sOpp.pan.pan.setTargetAtTime(s.oppPan || 0, t, 0.08);
+    } else {
+      o.out.gain.setTargetAtTime((s.oppLevel || 0) * 0.09, t, 0.08);
+      if (o.pan) o.pan.pan.setTargetAtTime(s.oppPan || 0, t, 0.08);
+    }
 
     this.siren.g.gain.setTargetAtTime((s.siren || 0) * 0.07, t, 0.1);
     if (this.siren.pan) this.siren.pan.pan.setTargetAtTime(s.sirenPan || 0, t, 0.1);

@@ -1088,6 +1088,7 @@ async function boot() {
   } catch (e) { /* fonts optional */ }
   let cars, props;
   try {
+    audio.loadEngine('assets/engine.json');
     [cars, props] = await Promise.all([load('assets/cars.json', 'cars'), load('assets/props.json', 'props')]);
   } catch (e) {
     $('loadMsg').textContent = 'The 3D models could not load. Reload the page to try again.';
@@ -1102,7 +1103,7 @@ async function boot() {
   show('title');
   // test hooks (used by the automated playtest)
   window.__driftline = {
-    get race() { return race; }, startRace, settings, input,
+    get race() { return race; }, startRace, settings, input, audio,
     autopilot(on = true) { race.player.autopilot = on ? new RacerAI(race.player, race.track, 1.0, { drifter: true, bias: 0 }) : null; },
     simulate(sec) {
       const n = Math.round(sec / STEP);
