@@ -27,14 +27,14 @@ const DEFAULTS = { volume: 0.8, quality: 'high', camera: 0, autoGas: false, fps:
 // AI pace: skill scaling, slow-down when ahead of you, catch-up when behind you
 const DIFFICULTY = {
   easy: { label: 'Easy', skill: s => s * 0.9, ahead: 0.11, behind: 0.03 },
-  normal: { label: 'Normal', skill: s => s, ahead: 0.075, behind: 0.075 },
+  normal: { label: 'Medium', skill: s => s, ahead: 0.075, behind: 0.075 },
   hard: { label: 'Hard', skill: s => 1 - (1 - s) * 0.35, ahead: 0.03, behind: 0.09 },
 };
 function updateRaceOpts() {
-  const extra = [!settings.traffic && 'no traffic', !settings.police && 'no police'].filter(Boolean).join(' · ');
-  $('raceOpts').textContent = `3 laps · ${diff().label}${extra ? ' · ' + extra : ''}`;
+  document.querySelectorAll('[data-diff]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.diff === settings.difficulty)));
+  document.querySelectorAll('[data-opt]').forEach(b => b.setAttribute('aria-pressed', String(!!settings[b.dataset.opt])));
+  $('diffName').textContent = diff().label;
 }
-function raceOptsChanged() { saveSettings(); updateRaceOpts(); if (race) $('raceNote').hidden = false; }
 const diff = () => DIFFICULTY[settings.difficulty] || DIFFICULTY.normal;
 const settings = { ...DEFAULTS };
 try { Object.assign(settings, JSON.parse(localStorage.getItem('driftline.v2') || '{}')); } catch (e) { /* storage unavailable */ }
@@ -1019,10 +1019,8 @@ function bindUI() {
     if (race) $('qualityNote').hidden = false;
   }));
   document.querySelectorAll('[name=camera]').forEach(r => r.addEventListener('change', e => { settings.camera = +e.target.value; cam.mode = settings.camera; saveSettings(); }));
-  document.querySelectorAll('[name=difficulty]').forEach(r => r.addEventListener('change', e => { settings.difficulty = e.target.value; raceOptsChanged(); }));
-  $('setTraffic').addEventListener('change', e => { settings.traffic = e.target.checked; raceOptsChanged(); });
-  $('setPolice').addEventListener('change', e => { settings.police = e.target.checked; raceOptsChanged(); });
-  $('raceOpts').addEventListener('click', () => $('btnSettings').click());
+  document.querySelectorAll('[data-diff]').forEach(b => b.addEventListener('click', () => { audio.init(); audio.hover(); settings.difficulty = b.dataset.diff; saveSettings(); updateRaceOpts(); }));
+  document.querySelectorAll('[data-opt]').forEach(b => b.addEventListener('click', () => { audio.init(); audio.hover(); settings[b.dataset.opt] = !settings[b.dataset.opt]; saveSettings(); updateRaceOpts(); }));
   $('setAutoGas').addEventListener('change', e => { settings.autoGas = e.target.checked; input.autoGas = settings.autoGas; saveSettings(); });
   $('setFps').addEventListener('change', e => { settings.fps = e.target.checked; $('fps').hidden = !settings.fps; saveSettings(); });
   $('fps').hidden = !settings.fps;
@@ -1045,10 +1043,6 @@ function syncSettingsUI() {
   document.querySelectorAll('[name=quality]').forEach(r => { r.checked = r.value === settings.quality; });
   document.querySelectorAll('[name=camera]').forEach(r => { r.checked = +r.value === settings.camera; });
   $('setAutoGas').checked = settings.autoGas;
-  document.querySelectorAll('[name=difficulty]').forEach(r => { r.checked = r.value === settings.difficulty; });
-  $('setTraffic').checked = settings.traffic;
-  $('setPolice').checked = settings.police;
-  updateRaceOpts();
   $('setFps').checked = settings.fps;
 }
 

@@ -258,6 +258,19 @@ html:not(.touch) .keys.tch { display: none; }
 .livery { display: grid; grid-template-columns: 1fr 1fr; margin-top: 10px; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
 .livery button { padding: 7px 4px 5px; font-weight: 700; letter-spacing: 0.1em; font-size: 13px; text-transform: uppercase; color: var(--dim); }
 .livery button[aria-pressed=true] { background: var(--ink); color: #fff; }
+.ropts-row { display: grid; gap: 7px; }
+.dseg { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.dseg button { padding: 7px 4px 5px; font-weight: 700; letter-spacing: 0.1em; font-size: 13px; text-transform: uppercase; color: var(--dim); }
+.dseg button[aria-pressed=true] { background: var(--ink); color: #fff; }
+.dseg button[data-diff=easy][aria-pressed=true] { background: #1e9e5a; }
+.dseg button[data-diff=hard][aria-pressed=true] { background: #d7263d; }
+.ochips { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.ochips button { display: flex; align-items: center; justify-content: center; gap: 7px; padding: 6px 6px 4px; border: 1px solid var(--line); border-radius: 8px; font-weight: 700; letter-spacing: 0.1em; font-size: 12px; text-transform: uppercase; color: var(--dim); background: rgba(255,255,255,0.6); }
+.ochips button i { width: 26px; height: 15px; border-radius: 10px; background: rgba(16,21,31,0.18); position: relative; transition: background 0.15s; flex: none; }
+.ochips button i::after { content: ""; position: absolute; top: 2px; left: 2px; width: 11px; height: 11px; border-radius: 50%; background: #fff; transition: transform 0.15s; box-shadow: 0 1px 2px rgba(0,0,0,0.25); }
+.ochips button[aria-pressed=true] { color: var(--ink); background: #fff; }
+.ochips button[aria-pressed=true] i { background: var(--orange); }
+.ochips button[aria-pressed=true] i::after { transform: translateX(11px); }
 .tracks { display: grid; gap: 7px; }
 .trackcard { display: grid; grid-template-columns: 92px 1fr; gap: 10px; align-items: center; text-align: left; padding: 6px; border-radius: 10px; border: 1px solid var(--line); background: rgba(255,255,255,0.6); transition: border-color 0.15s, background 0.15s; }
 .trackcard canvas { width: 92px; height: 58px; display: block; background: #f3f5f8; border-radius: 6px; }
@@ -295,8 +308,6 @@ html:not(.touch) .keys.tch { display: none; }
 .modal .card { width: min(480px, 100%); }
 .field { display: grid; gap: 6px; }
 .field > span { font-size: 12px; letter-spacing: 0.16em; font-weight: 700; color: var(--dim); text-transform: uppercase; }
-.optlink { font: inherit; font-size: 12px; font-weight: 700; letter-spacing: 0.06em; color: var(--ink); background: rgba(16,21,31,0.06); border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px; cursor: pointer; }
-.optlink:hover { border-color: var(--orange); }
 .seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
 .seg label { text-align: center; padding: 8px 4px; font-weight: 700; letter-spacing: 0.06em; cursor: pointer; color: var(--dim); }
 .seg input { position: absolute; opacity: 0; pointer-events: none; }
@@ -350,6 +361,17 @@ html[data-state=race] #btnMute, html[data-state=loading] #btnMute { display: non
   .livery { margin-top: 6px; }
   .livery button { font-size: 11px; padding: 5px 4px 3px; }
   .tracks { grid-template-columns: repeat(3, 1fr); gap: 5px; }
+  .ropts-row { grid-template-columns: 1.5fr 1fr; gap: 5px; }
+  .ochips button i { display: none; }
+  .ochips button { text-decoration: line-through; text-decoration-thickness: 2px; }
+  .ochips button[aria-pressed=true] { background: var(--orange); border-color: var(--orange); color: #fff; text-decoration: none; }
+  .ropts .plabel { display: none; }
+  .dseg button { font-size: 10px; padding: 5px 2px 3px; letter-spacing: 0.04em; }
+  .ochips { gap: 4px; }
+  .ochips button { font-size: 10px; padding: 4px 3px 2px; gap: 4px; letter-spacing: 0.04em; }
+  .ochips button i { width: 20px; height: 12px; }
+  .ochips button i::after { width: 8px; height: 8px; }
+  .ochips button[aria-pressed=true] i::after { transform: translateX(8px); }
   .trackcard { grid-template-columns: 1fr; gap: 3px; padding: 4px; text-align: center; }
   .trackcard canvas { width: 100%; height: 34px; }
   .trackcard b { font-size: 15px; line-height: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -486,8 +508,22 @@ html[data-state=race] #btnMute, html[data-state=loading] #btnMute { display: non
           <button data-livery="stripes" aria-pressed="true">Racing stripes</button>
         </div>
       </div>
+      <div class="panel glass ropts">
+        <div class="plabel"><span>Rivals</span><b id="diffName">Medium</b></div>
+        <div class="ropts-row">
+          <div class="dseg" role="group" aria-label="Rival difficulty">
+            <button data-diff="easy" aria-pressed="false">Easy</button>
+            <button data-diff="normal" aria-pressed="true">Medium</button>
+            <button data-diff="hard" aria-pressed="false">Hard</button>
+          </div>
+          <div class="ochips">
+            <button data-opt="police" aria-pressed="true"><i aria-hidden="true"></i>Police</button>
+            <button data-opt="traffic" aria-pressed="true"><i aria-hidden="true"></i>Traffic</button>
+          </div>
+        </div>
+      </div>
       <div class="panel glass">
-        <div class="plabel"><span>Track</span><button id="raceOpts" class="optlink" type="button">3 laps · Normal</button></div>
+        <div class="plabel"><span>Track</span><span>3 laps · 9 cars</span></div>
         <div id="tracks" class="tracks"></div>
       </div>
       <button id="btnRace" class="cta race">Race</button>
@@ -553,16 +589,6 @@ html[data-state=race] #btnMute, html[data-state=loading] #btnMute { display: non
           <label><input type="radio" name="camera" value="2">Bumper</label>
         </div>
       </div>
-      <div class="field"><span>Difficulty</span>
-        <div class="seg">
-          <label><input type="radio" name="difficulty" value="easy">Easy</label>
-          <label><input type="radio" name="difficulty" value="normal">Normal</label>
-          <label><input type="radio" name="difficulty" value="hard">Hard</label>
-        </div>
-      </div>
-      <label class="toggle"><span>Traffic on the road</span><input id="setTraffic" type="checkbox"></label>
-      <label class="toggle"><span>Police chases</span><input id="setPolice" type="checkbox"></label>
-      <p class="note" id="raceNote" hidden>Race options apply from the next race.</p>
       <label class="toggle"><span>Auto-accelerate on touch screens</span><input id="setAutoGas" type="checkbox"></label>
       <label class="toggle"><span>Show frame rate</span><input id="setFps" type="checkbox"></label>
       <div class="btnrow"><button id="btnCloseSettings" class="cta">Done</button></div>
