@@ -332,11 +332,13 @@ export const GradeShader = {
     tDiffuse: { value: null },
     uBlur: { value: 0 }, uCA: { value: 0.004 }, uVig: { value: 0.35 }, uSat: { value: 1.08 },
     uSun: { value: new THREE.Vector2(-9, -9) }, uSunOn: { value: 0 }, uAspect: { value: 1.6 }, uTaps: { value: 8 },
+    uContrast: { value: 1.0 }, uGrain: { value: 0 }, uTime: { value: 0 },
   },
   vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
   fragmentShader: `
     uniform sampler2D tDiffuse; uniform float uBlur; uniform float uCA; uniform float uVig; uniform float uSat;
     uniform vec2 uSun; uniform float uSunOn; uniform float uAspect; uniform float uTaps;
+    uniform float uContrast; uniform float uGrain; uniform float uTime;
     varying vec2 vUv;
     void main() {
       vec2 c = vec2(0.5, 0.56);
@@ -373,7 +375,13 @@ export const GradeShader = {
       }
       float l = dot(col, vec3(0.2126, 0.7152, 0.0722));
       col = mix(vec3(l), col, uSat);
+      // contrast around middle grey in linear light (this runs before tone mapping)
+      col = pow(max(col, vec3(0.0)) / 0.18, vec3(uContrast)) * 0.18;
       col *= mix(1.0, smoothstep(1.25, 0.35, r), uVig);
+      if (uGrain > 0.0) {
+        float g = fract(sin(dot(vUv * 1000.0 + uTime, vec2(12.9898, 78.233))) * 43758.5453) - 0.5;
+        col *= 1.0 + g * uGrain;
+      }
       gl_FragColor = vec4(col, 1.0);
     }`,
 };

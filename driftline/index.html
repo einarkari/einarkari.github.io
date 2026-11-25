@@ -387,6 +387,73 @@ html[data-state=race] #btnMute, html[data-state=loading] #btnMute { display: non
   .side { grid-column: 1; grid-row: 4; }
   .carnav { grid-row: 3; align-self: end; }
 }
+
+/* ---------------------------------------------------------------- cash + upgrades */
+.gbtns { display: flex; gap: 8px; align-items: center; }
+.cash { display: flex; align-items: baseline; gap: 8px; padding: 5px 14px 2px; border-radius: 10px; }
+.cash span { font-weight: 700; font-size: 11px; letter-spacing: 0.18em; color: var(--dim); }
+.cash b { font-family: var(--display); font-size: 26px; font-weight: 500; line-height: 1; color: var(--good); font-variant-numeric: tabular-nums; }
+.cash.big { border: 1px solid var(--line); background: #f8f9fb; }
+.cash.big b { font-size: 34px; }
+.cash.bump b { animation: bump 0.5s ease; }
+@keyframes bump { 40% { transform: scale(1.18); } }
+.upbtn { justify-self: start; display: flex; align-items: center; gap: 12px; margin-top: 8px; padding: 9px 14px 7px 16px; border-radius: 10px; background: var(--ink); color: #fff; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; font-size: 14px; box-shadow: var(--shadow); transition: transform 0.15s, background 0.15s; }
+.upbtn:hover { background: #222a38; transform: translateY(-1px); }
+.upbtn .ulv { font-family: var(--display); font-size: 20px; letter-spacing: 0.04em; color: var(--orange-2); line-height: 1; }
+.upbtn.can::after { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--good); box-shadow: 0 0 0 3px rgba(25,163,90,0.25); }
+.stat .bar::before { content: ""; position: absolute; inset: 0; transform-origin: left; transform: scaleX(var(--u, 0)); background: var(--orange-2); transition: transform 0.5s cubic-bezier(.2,1,.3,1); }
+.upcard { width: min(560px, 100%) !important; }
+.uphead .subt { margin-top: 8px; }
+.uphead { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+.uplist { display: grid; gap: 8px; }
+.uprow { display: grid; grid-template-columns: 1fr auto; gap: 4px 14px; align-items: center; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: #f8f9fb; }
+.uprow .un { font-family: var(--display); font-size: 26px; line-height: 0.9; font-weight: 500; display: flex; align-items: baseline; gap: 10px; }
+.uprow .un em { font-family: var(--body); font-style: normal; font-size: 13px; font-weight: 700; color: var(--good); letter-spacing: 0.04em; }
+.uprow .ud { grid-column: 1; font-size: 13px; color: var(--dim); font-weight: 600; }
+.pips { display: flex; gap: 4px; margin-top: 2px; grid-column: 1; }
+.pips i { width: 26px; height: 7px; background: rgba(16,21,31,0.12); transform: skewX(-20deg); }
+.pips i.on { background: var(--orange); }
+.buy { grid-column: 2; grid-row: 1 / 4; min-width: 112px; padding: 9px 12px 6px; border-radius: 10px; background: var(--orange); color: #fff; font-family: var(--display); font-size: 24px; line-height: 1; letter-spacing: 0.04em; display: grid; justify-items: center; gap: 2px; transition: filter 0.15s, transform 0.1s; }
+.buy small { font-family: var(--body); font-size: 10px; font-weight: 700; letter-spacing: 0.18em; }
+.buy:hover:not(:disabled) { filter: brightness(1.08); }
+.buy:active:not(:disabled) { transform: scale(0.97); }
+.buy:disabled { background: rgba(16,21,31,0.08); color: var(--dim); cursor: default; }
+.buy.max:disabled { background: var(--ink); color: #fff; }
+.earn { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 18px; padding: 10px 14px; border-radius: 12px; background: rgba(25,163,90,0.09); border: 1px solid rgba(25,163,90,0.3); }
+.earn .et { display: grid; }
+.earn .et span { font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--dim); font-weight: 700; }
+.earn .et b { font-family: var(--display); font-size: 38px; font-weight: 500; line-height: 0.95; color: var(--good); font-variant-numeric: tabular-nums; }
+.earn .eb { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 14px; font-weight: 700; color: var(--dim); }
+.earn .eb b { color: var(--ink); font-weight: 700; }
+html:not(.touch) .touchonly { display: none; }
+
+/* ---------------------------------------------------------------- touch: no speedometer, nitro level on the button */
+html.touch #hud .br { display: none; }
+@media (max-height: 480px) {
+  /* phones: the upgrade shop as a 2x2 grid so all four upgrades and Done fit without scrolling */
+  .upcard { width: min(760px, 100%) !important; gap: 8px !important; padding: 12px 16px !important; }
+  .upcard h2 { font-size: 34px !important; }
+  .cash.big b { font-size: 26px; }
+  .uplist { grid-template-columns: 1fr 1fr; gap: 6px; }
+  .uprow { padding: 7px 9px; gap: 2px 8px; }
+  .uprow .un { font-size: 21px; gap: 6px; flex-wrap: wrap; }
+  .uprow .un em { font-size: 11px; }
+  .uprow .ud { font-size: 11px; line-height: 1.15; }
+  .pips i { width: 16px; height: 5px; }
+  .buy { min-width: 84px; font-size: 19px; padding: 7px 8px 4px; }
+  .buy small { font-size: 8px; letter-spacing: 0.1em; }
+  .upcard .note { display: none; }
+  .upcard .cta { font-size: 24px; padding: 6px 28px 2px; }
+  .earn { padding: 6px 10px; }
+  .earn .et b { font-size: 30px; }
+  #touch .tbtn { font-size: 16px; letter-spacing: 0.06em; }
+  .round { font-size: 13px !important; }
+}
+.tnitro { overflow: hidden; display: grid !important; place-items: center; align-content: center; gap: 0; }
+.tnitro .nfill { position: absolute; left: 0; right: 0; bottom: 0; height: 100%; transform-origin: bottom; transform: scaleY(var(--n, 0.3)); background: linear-gradient(to top, rgba(31,139,255,0.85), rgba(52,216,255,0.6)); transition: transform 0.12s linear; pointer-events: none; }
+.tnitro span, .tnitro small { position: relative; pointer-events: none; line-height: 1; }
+.tnitro small { font-family: var(--display); font-size: 0.95em; letter-spacing: 0.04em; opacity: 0.9; }
+.tnitro.full { box-shadow: 0 0 0 3px rgba(52,216,255,0.55), 0 0 22px rgba(52,216,255,0.6); }
 @media (prefers-reduced-motion: reduce) {
   .chip, .msg.on, .count.on, .drift, .keysbar { animation: none !important; transition: none !important; }
 }
@@ -446,7 +513,7 @@ html[data-state=race] #btnMute, html[data-state=loading] #btnMute { display: non
   <div id="touch" hidden>
     <button class="tbtn steerbtn" data-ctl="left" aria-label="Steer left"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4 7 12l8 8"/></svg></button>
     <button class="tbtn steerbtn" data-ctl="right" aria-label="Steer right"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m9 4 8 8-8 8"/></svg></button>
-    <button class="tbtn round tnitro" data-ctl="nitro">NITRO</button>
+    <button class="tbtn round tnitro" data-ctl="nitro"><i class="nfill" aria-hidden="true"></i><span>NITRO</span><small id="tNitroPct">30%</small></button>
     <button class="tbtn round tdrift" data-ctl="drift">DRIFT</button>
     <button class="tbtn pedal brake" data-ctl="brake">BRAKE</button>
     <button class="tbtn pedal gas" data-ctl="gas">GAS</button>
@@ -482,7 +549,7 @@ html[data-state=race] #btnMute, html[data-state=loading] #btnMute { display: non
   <section id="scr-garage" class="screen garage" hidden>
     <header class="gbar">
       <div class="logo"><span class="l1">DRIFT</span><span class="l2">LINE</span></div>
-      <button id="btnSettings" class="ghost glass">Settings</button>
+      <div class="gbtns"><div class="cash glass" aria-label="Your cash"><span>CASH</span><b id="cashAmt">$0</b></div><button id="btnSettings" class="ghost glass">Settings</button></div>
     </header>
     <div class="carinfo">
       <div class="idx" id="carIdx">1 / 4</div>
@@ -495,6 +562,7 @@ html[data-state=race] #btnMute, html[data-state=loading] #btnMute { display: non
         <div class="stat"><span>Drift</span><div class="bar" id="bar-drift"></div></div>
       </div>
       <div class="topspeed"><span>Top speed</span><b id="topSpeed">300 km/h</b></div>
+      <button id="btnUpgrades" class="upbtn"><span class="ul">Upgrade car</span><span class="ulv" id="upSummary">0 / 20</span></button>
     </div>
     <div class="carnav">
       <button id="btnPrev" class="arrow glass" aria-label="Previous car">‹</button>
@@ -555,6 +623,10 @@ html[data-state=race] #btnMute, html[data-state=loading] #btnMute { display: non
         <div class="tile"><span>Best lap</span><b id="resBest">--</b></div>
         <div class="tile"><span>Times busted</span><b id="resBusts">0</b></div>
       </div>
+      <div class="earn" id="resEarn" hidden>
+        <div class="et"><span>Cash earned</span><b id="resCash">+$0</b></div>
+        <div class="eb" id="resCashParts"></div>
+      </div>
       <div style="overflow-x:auto">
         <table class="restable">
           <thead><tr><th>Pos</th><th>Driver</th><th>Car</th><th>Time</th><th>Best lap</th></tr></thead>
@@ -566,6 +638,18 @@ html[data-state=race] #btnMute, html[data-state=loading] #btnMute { display: non
         <button id="btnAgain" class="cta">Race again</button>
         <button id="btnResGarage" class="ghost">Back to garage</button>
       </div>
+    </div>
+  </section>
+
+  <section id="scr-upgrades" class="modal" hidden>
+    <div class="card upcard">
+      <div class="uphead">
+        <div><h2>Upgrades</h2><div class="subt" id="upCar">Halcyon GT</div></div>
+        <div class="cash big"><span>CASH</span><b id="upCash">$0</b></div>
+      </div>
+      <div id="upList" class="uplist"></div>
+      <p class="note">Upgrades belong to this car. Earn cash by racing: a better place, more style points and a harder difficulty pay more. Getting busted costs a $500 fine.</p>
+      <div class="btnrow"><button id="btnCloseUpgrades" class="cta">Done</button></div>
     </div>
   </section>
 
@@ -591,6 +675,7 @@ html[data-state=race] #btnMute, html[data-state=loading] #btnMute { display: non
         </div>
       </div>
       <label class="toggle"><span>Auto-accelerate on touch screens</span><input id="setAutoGas" type="checkbox"></label>
+      <label class="toggle touchonly"><span>Steer by tilting the phone</span><input id="setTilt" type="checkbox"></label>
       <label class="toggle"><span>Show frame rate</span><input id="setFps" type="checkbox"></label>
       <p class="note credit">Engine sound made from recordings on freesound.org: sports car acceleration by florianreichelt (CC0), V12 rev by Janosch-JR (CC0) and "Lamborghini Sounds" by JaimeLopes (CC BY 4.0, cut into loops).</p>
       <div class="btnrow"><button id="btnCloseSettings" class="cta">Done</button></div>

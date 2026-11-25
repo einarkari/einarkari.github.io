@@ -665,12 +665,24 @@ function terrainGrid(track, quality, pad, heightFn, colorFn, extraFlat = 1.5) {
   for (let j = 0; j <= seg; j++) for (let i = 0; i <= seg; i++) { const k = j * (seg + 1) + i; uv[k * 2] = i / seg; uv[k * 2 + 1] = j / seg; }
   geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
   geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+  // ground detail: tileable multi-scale noise (clumps + blades) so grass, sand and dirt are not flat colour
   const [dc, dg] = cvs(256, 256);
   const di = dg.createImageData(256, 256);
-  for (let i = 0; i < di.data.length; i += 4) { const v = 205 + Math.random() * 50; di.data[i] = di.data[i + 1] = di.data[i + 2] = v; di.data[i + 3] = 255; }
+  for (let y = 0; y < 256; y++) for (let x = 0; x < 256; x++) {
+    const i = (y * 256 + x) * 4;
+    const tile = (f) => { // periodic value noise so the texture repeats without seams
+      const u = x / 256 * f, v = y / 256 * f;
+      const xi = Math.floor(u), yi = Math.floor(v), xf = u - xi, yf = v - yi;
+      const h = (a, b) => noise2(((a % f) + f) % f, ((b % f) + f) % f);
+      const sx = xf * xf * (3 - 2 * xf), sy = yf * yf * (3 - 2 * yf);
+      return (h(xi, yi) * (1 - sx) + h(xi + 1, yi) * sx) * (1 - sy) + (h(xi, yi + 1) * (1 - sx) + h(xi + 1, yi + 1) * sx) * sy;
+    };
+    const v = 168 + tile(4) * 40 + tile(16) * 30 + Math.random() * 26;
+    di.data[i] = di.data[i + 1] = di.data[i + 2] = Math.min(255, v); di.data[i + 3] = 255;
+  }
   dg.putImageData(di, 0, 0);
   const detail = toTex(dc);
-  detail.repeat.set(seg * 1.5, seg * 1.5);
+  detail.repeat.set(seg * 0.6, seg * 0.6);
   const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, map: detail }));
   mesh.receiveShadow = quality !== 'low';
   const heightAt = (x, z) => {
@@ -1153,7 +1165,7 @@ function buildCoast(track, assets, ctx) {
   });
 
   // terrain: mown grass near the circuit, sand traps outside corners, hills inland, beach to the sea
-  const grassA = new THREE.Color(0x5e9a3a), grassB = new THREE.Color(0x6dab45), dry = new THREE.Color(0xa7a868),
+  const grassA = new THREE.Color(0x4d7a30), grassB = new THREE.Color(0x5f8a3a), dry = new THREE.Color(0x9c9a63),
     gravel = new THREE.Color(0xddcfa9), sand = new THREE.Color(0xefe0b9), wet = new THREE.Color(0xc9b68c), rock = new THREE.Color(0x9a8f7c);
   const terr = terrainGrid(track, quality, 1100, (x, z, t, y) => {
     const n = fbm(x * 0.002 + 4, z * 0.002 - 2);

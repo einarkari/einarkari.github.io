@@ -6,6 +6,7 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
+import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
 import { TRACKS, Track } from './track.js';
 import { buildWorld } from './world.js';
 import { CAR_LIST, PAINTS, CarFactory, Vehicle } from './vehicle.js';
@@ -14,6 +15,7 @@ import { Particles, GlowPoints, SkidMarks, GroundQuads, SpeedLines, radialTextur
 import { AudioEngine } from './audio.js';
 import { HUD, fmtTime, ordinal } from './hud.js';
 import { Input } from './input.js';
+import { Career, UPGRADES, MAX_LEVEL, upgradedSpec, money } from './career.js';
 
 const $ = id => document.getElementById(id);
 const clamp = THREE.MathUtils.clamp;
@@ -23,7 +25,7 @@ const dampAngle = (a, b, k, dt) => a + wrapA(b - a) * (1 - Math.exp(-k * dt));
 
 // ------------------------------------------------------------------ settings
 const isTouch = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window;
-const DEFAULTS = { volume: 0.8, quality: 'high', camera: 0, autoGas: false, fps: false, car: 0, paint: 7, stripes: true, track: 0, difficulty: 'normal', traffic: true, police: true };
+const DEFAULTS = { volume: 0.8, quality: 'high', camera: 0, autoGas: false, tilt: false, fps: false, car: 0, paint: 7, stripes: true, track: 0, difficulty: 'normal', traffic: true, police: true };
 // AI pace: skill scaling, slow-down when ahead of you, catch-up when behind you
 const DIFFICULTY = {
   easy: { label: 'Easy', skill: s => s * 0.9, ahead: 0.11, behind: 0.03 },
@@ -46,15 +48,18 @@ const saveSettings = () => { try { localStorage.setItem('driftline.v2', JSON.str
 // ------------------------------------------------------------------ renderer
 const canvas = $('gl');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance', stencil: false });
-renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMapping = THREE.NeutralToneMapping;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 const camera = new THREE.PerspectiveCamera(62, 1, 0.3, 9000);
-let composer, renderPass, bloom, grade, pixelRatio = 1, maxPR = 1;
+let composer, renderPass, ao = null, bloom, grade, pixelRatio = 1, maxPR = 1;
+// ambient occlusion runs at a fraction of the screen resolution
+const AO_SCALE = { high: 0.5, ultra: 1 };
 const speedLines = new SpeedLines($('speedlines'));
 
 function setupComposer() {
   const q = settings.quality;
+  setupReflections();
   maxPR = Math.min(window.devicePixelRatio || 1, q === 'ultra' ? 2.5 : q === 'high' ? 2 : q === 'medium' ? 1.5 : 1);
   pixelRatio = maxPR;
   renderer.setPixelRatio(pixelRatio);
@@ -68,6 +73,22 @@ function setupComposer() {
   grade.enabled = q !== 'low';
   grade.uniforms.uTaps.value = q === 'ultra' ? 10 : q === 'high' ? 7 : 0;
   composer.addPass(renderPass);
+  ao = null;
+  if (AO_SCALE[q]) {
+    ao = new GTAOPass(new THREE.Scene(), camera, 64, 64);
+    const aoScale = AO_SCALE[q];
+    ao.setSize = (w, h) => GTAOPass.prototype.setSize.call(ao, Math.max(1, Math.round(w * aoScale)), Math.max(1, Math.round(h * aoScale)));
+    ao.updateGtaoMaterial({ radius: 1.4, distanceExponent: 1.6, thickness: 2.2, scale: 1.15, samples: q === 'ultra' ? 16 : 12, distanceFallOff: 0.8, screenSpaceRadius: false });
+    ao.updatePdMaterial({ lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: 5, rings: 2, samples: 12 });
+    ao.blendIntensity = 1;
+    // background layers (sky, distant hills, water: materials without fog) stay out of the occlusion pass
+    const baseHide = ao.overrideVisibility.bind(ao);
+    ao.overrideVisibility = () => {
+      baseHide();
+      ao.scene.traverse(o => { if (o.material && (o.material.fog === false || o.material.transparent)) o.visible = false; });
+    };
+    composer.addPass(ao);
+  }
   composer.addPass(bloom);
   composer.addPass(grade);
   composer.addPass(new OutputPass());
@@ -94,6 +115,8 @@ input.autoGas = settings.autoGas;
 const audio = new AudioEngine();
 audio.volume = settings.volume;
 const hud = new HUD();
+const career = new Career();
+input.tilt = settings.tilt;
 let assets = null, factory = null, race = null;
 let state = 'loading';
 const garage = { scene: new THREE.Scene(), table: new THREE.Group(), car: null, carKey: '', angle: 0.7, spin: 0, dragX: null };
@@ -106,10 +129,12 @@ const screens = ['loading', 'title', 'garage', 'pause', 'results'];
 function show(name) {
   for (const s of screens) $('scr-' + s).hidden = s !== name;
   $('scr-settings').hidden = true;
+  $('scr-upgrades').hidden = true;
 }
 
 function setState(s) {
   state = s;
+  if (isTouch) keepAwake(s === 'race' || s === 'paused');
   document.documentElement.dataset.state = s;
 }
 
@@ -197,13 +222,67 @@ function garageCar() {
   // UI
   $('carName').textContent = spec.name;
   $('carClass').textContent = spec.klass;
-  for (const k of ['speed', 'accel', 'handling', 'drift']) $('bar-' + k).style.setProperty('--v', spec.bars[k]);
-  $('topSpeed').textContent = Math.round(spec.top * 3.6 * 0.95 / 5) * 5 + ' km/h';
+  updateCarStats();
   $('carIdx').textContent = `${settings.car + 1} / ${CAR_LIST.length}`;
   document.querySelectorAll('.swatch').forEach((b, i) => b.setAttribute('aria-pressed', String(i === settings.paint)));
   $('paintName').textContent = PAINTS[settings.paint].name;
   document.querySelectorAll('[data-livery]').forEach(b => b.setAttribute('aria-pressed', String((b.dataset.livery === 'stripes') === !!settings.stripes)));
   document.querySelectorAll('.trackcard').forEach((b, i) => b.setAttribute('aria-pressed', String(i === settings.track)));
+}
+
+/** stat bars (base + bought upgrades), top speed, cash and the upgrade button */
+function updateCarStats() {
+  const spec = CAR_LIST[settings.car];
+  const lv = career.levels(spec.id);
+  const up = upgradedSpec(spec, lv);
+  for (const k of ['speed', 'accel', 'handling', 'drift']) {
+    const b = $('bar-' + k);
+    b.style.setProperty('--v', spec.bars[k]);
+    b.style.setProperty('--u', up.bars[k]);
+  }
+  $('topSpeed').textContent = Math.round(up.top * 3.6 * 0.95 / 5) * 5 + ' km/h';
+  const total = UPGRADES.reduce((n, g) => n + lv[g.key], 0);
+  $('upSummary').textContent = `${total} / ${UPGRADES.length * MAX_LEVEL}`;
+  const canBuy = UPGRADES.some(g => { const p = career.price(spec.id, g.key); return p !== null && p <= career.cash; });
+  $('btnUpgrades').classList.toggle('can', canBuy);
+  $('cashAmt').textContent = money(career.cash);
+}
+
+function renderUpgrades() {
+  const spec = CAR_LIST[settings.car];
+  const lv = career.levels(spec.id);
+  $('upCar').textContent = spec.name;
+  $('upCash').textContent = money(career.cash);
+  const list = $('upList');
+  list.innerHTML = '';
+  for (const g of UPGRADES) {
+    const row = document.createElement('div');
+    row.className = 'uprow';
+    const l = lv[g.key], price = career.price(spec.id, g.key);
+    row.innerHTML = '<div class="un"><span></span><em></em></div><div class="ud"></div><div class="pips"></div><button class="buy"></button>';
+    row.querySelector('.un span').textContent = g.name;
+    row.querySelector('.un em').textContent = l ? g.fx(l) : '';
+    row.querySelector('.ud').textContent = g.desc;
+    const pips = row.querySelector('.pips');
+    for (let i = 0; i < MAX_LEVEL; i++) { const p = document.createElement('i'); if (i < l) p.className = 'on'; pips.appendChild(p); }
+    pips.setAttribute('aria-label', `Level ${l} of ${MAX_LEVEL}`);
+    const b = row.querySelector('.buy');
+    if (price === null) { b.className = 'buy max'; b.disabled = true; b.innerHTML = 'MAXED<small>LEVEL 5</small>'; }
+    else {
+      b.innerHTML = `${money(price)}<small>${price <= career.cash ? 'BUY LEVEL ' + (l + 1) : 'NEED ' + money(price - career.cash)}</small>`;
+      b.disabled = price > career.cash;
+      b.setAttribute('aria-label', `Buy ${g.name} level ${l + 1} for ${money(price)}`);
+      b.addEventListener('click', () => {
+        audio.init();
+        if (!career.buy(spec.id, g.key)) return;
+        audio.nitroFull();
+        renderUpgrades();
+        updateCarStats();
+        garage.spin = 0.6;
+      });
+    }
+    list.appendChild(row);
+  }
 }
 
 function renderGarage(dt) {
@@ -216,11 +295,12 @@ function renderGarage(dt) {
   garageCam.lookAt(0, aspect < 1.4 ? 1.1 : 0.45, 0);
   renderPass.scene = garage.scene;
   renderPass.camera = garageCam;
+  if (ao) { ao.scene = garage.scene; ao.camera = garageCam; ao.blendIntensity = 0.75; }
   bloom.enabled = false;
   if (pixelRatio !== maxPR) { pixelRatio = maxPR; renderer.setPixelRatio(pixelRatio); resize(); }
   renderer.toneMappingExposure = 0.95;
   renderer.shadowMap.enabled = true;
-  if (grade) { grade.uniforms.uBlur.value = 0; grade.uniforms.uSunOn.value = 0; grade.uniforms.uCA.value = 0; grade.uniforms.uVig.value = 0.12; grade.uniforms.uSat.value = 1.05; }
+  if (grade) { grade.uniforms.uBlur.value = 0; grade.uniforms.uSunOn.value = 0; grade.uniforms.uCA.value = 0; grade.uniforms.uVig.value = 0.12; grade.uniforms.uSat.value = 1.08; grade.uniforms.uContrast.value = 1.05; grade.uniforms.uGrain.value = 0; }
   composer.render(dt);
 }
 
@@ -296,7 +376,7 @@ function startRace() {
   const fx = makeFx(scene, world.night, def.theme);
   const shadowsOn = settings.quality !== 'low';
 
-  const pSpec = CAR_LIST[settings.car];
+  const pSpec = upgradedSpec(CAR_LIST[settings.car], career.levels(CAR_LIST[settings.car].id));
   const player = new Vehicle(pSpec, factory.create(pSpec.id, PAINTS[settings.paint].hex, { physical: true, shadows: shadowsOn, stripes: settings.stripes }), { name: 'YOU', isPlayer: true });
   player.mapColor = '#ff6b1a';
   player.under = '#ff6b1a';
@@ -351,6 +431,7 @@ function startRace() {
     },
   };
   for (const cop of police.pool) scene.add(cop.root);
+  carReflections(player);
   cam.init = false;
   cam.mode = settings.camera;
   hud.setupRace(race);
@@ -803,6 +884,7 @@ function raceFrame(dt) {
   if (R.phase !== 'intro' && state === 'race') { hud.update(R, dt, performance.now() / 1000); hud.updateTags(R, camera); hud.slipstream(R.slipOn); }
   hud.driftScore(R.drift.active && R.drift.pts > 30, R.drift.pts, R.drift.mul);
   const p = R.player;
+  if (isTouch) touchNitro(p.nitro);
   const sl = clamp((p.speed - 50) / 40, 0, 1) * 0.65 + (p.boosting ? 0.55 : 0);
   speedLines.draw(dt, R.phase === 'intro' ? 0 : sl, p.boosting);
 
@@ -810,6 +892,8 @@ function raceFrame(dt) {
   for (const pp of [R.fx.smoke, R.fx.sparks, R.fx.glow, ...R.world.glowPoints]) pp.mat.uniforms.scale.value = pScale;
   renderPass.scene = R.scene;
   renderPass.camera = camera;
+  if (ao) { ao.scene = R.scene; ao.camera = camera; ao.blendIntensity = 1; }
+  updateReflections(R);
   bloom.enabled = settings.quality !== 'low';
   const bl = R.world.bloom;
   bloom.strength = bl.strength + (p.boosting ? 0.15 : 0);
@@ -820,9 +904,12 @@ function raceFrame(dt) {
     const u = grade.uniforms;
     const fast = clamp((p.speed - 45) / 45, 0, 1);
     u.uBlur.value = u.uTaps.value > 0 ? fast * 0.55 + (cam.boost || 0) * 0.9 : 0;
-    u.uCA.value = 0.003 + fast * 0.004 + (cam.boost || 0) * 0.006;
-    u.uVig.value = 0.28 + (cam.boost || 0) * 0.15;
-    u.uSat.value = 1.1;
+    u.uCA.value = 0.0012 + fast * 0.003 + (cam.boost || 0) * 0.006;
+    u.uVig.value = 0.3 + (cam.boost || 0) * 0.15;
+    u.uSat.value = 1.02;
+    u.uContrast.value = 1.12;
+    u.uGrain.value = settings.quality === 'ultra' || settings.quality === 'high' ? 0.035 : 0;
+    u.uTime.value = (u.uTime.value + 1.618) % 1000;
     u.uAspect.value = camera.aspect;
     const sd = R.world.sunDir;
     if (sd) {
@@ -833,6 +920,72 @@ function raceFrame(dt) {
     } else u.uSunOn.value = 0;
   }
   composer.render(dt);
+}
+
+let tnLast = -1;
+function touchNitro(n) {
+  const v = Math.round(n * 100);
+  if (v === tnLast) return;
+  tnLast = v;
+  const b = document.querySelector('.tnitro');
+  b.style.setProperty('--n', (v / 100).toFixed(2));
+  b.classList.toggle('full', v >= 100);
+  $('tNitroPct').textContent = v + '%';
+}
+
+// ------------------------------------------------------------------ live reflections on the player's car
+// A cube camera follows the car and captures the street around it; a couple of faces are refreshed per frame.
+const reflect = { rt: null, cams: null, face: 0, perFrame: 2 };
+function setupReflections() {
+  const q = settings.quality;
+  if (reflect.rt) { reflect.rt.dispose(); reflect.rt = null; }
+  if (q !== 'high' && q !== 'ultra') return;
+  reflect.rt = new THREE.WebGLCubeRenderTarget(q === 'ultra' ? 256 : 128, { type: THREE.HalfFloatType });
+  reflect.cam = new THREE.CubeCamera(0.8, 2500, reflect.rt);
+  reflect.cam.coordinateSystem = renderer.coordinateSystem;
+  reflect.cam.updateCoordinateSystem();
+  reflect.perFrame = q === 'ultra' ? 3 : 2;
+  reflect.face = 0;
+}
+function carReflections(player) {
+  if (!reflect.rt) return;
+  const env = reflect.rt.texture;
+  player.vis.paint.envMap = env;
+  player.vis.paint.envMapIntensity = 1.15;
+  player.vis.paint.needsUpdate = true;
+  const shiny = factory.shared.shiny.clone();
+  shiny.envMap = env;
+  player.vis.bodyPivot.traverse(o => { if (o.isMesh && o.material === factory.shared.shiny) o.material = shiny; });
+  reflect.face = 0;
+  reflect.primed = false;
+}
+function updateReflections(R) {
+  if (!reflect.rt || !R.player.vis.paint.envMap) return;
+  const p = R.player, cc = reflect.cam;
+  cc.position.set(p.rx, p.ry + 0.75, p.rz);
+  cc.updateMatrixWorld(true);
+  const cams = cc.children;
+  const prevTarget = renderer.getRenderTarget();
+  const autoShadow = renderer.shadowMap.autoUpdate;
+  renderer.shadowMap.autoUpdate = false; // reuse this frame's shadow map
+  p.root.visible = false;
+  const fx = R.fx;
+  const fxVis = [fx.smoke.points.visible, fx.sparks.points.visible];
+  fx.smoke.points.visible = fx.sparks.points.visible = false;
+  // first frame renders every face so the car never shows an empty reflection
+  const n = reflect.primed ? reflect.perFrame : 6;
+  for (let k = 0; k < n; k++) {
+    const f = reflect.face;
+    renderer.setRenderTarget(reflect.rt, f);
+    renderer.render(R.scene, cams[f]);
+    reflect.face = (f + 1) % 6;
+    if (reflect.face === 0) reflect.rt.texture.needsPMREMUpdate = true;
+  }
+  reflect.primed = true;
+  fx.smoke.points.visible = fxVis[0]; fx.sparks.points.visible = fxVis[1];
+  p.root.visible = true;
+  renderer.shadowMap.autoUpdate = autoShadow;
+  renderer.setRenderTarget(prevTarget);
 }
 
 // ------------------------------------------------------------------ results
@@ -867,9 +1020,28 @@ function refreshResults() {
   $('resBest').textContent = R.player.bestLap ? fmtTime(R.player.bestLap, true) : '--';
   $('resBusts').textContent = String(R.busts);
 }
+function payRace() {
+  const R = race;
+  if (R.paid) return;
+  R.paid = true;
+  const place = R.finishOrder.indexOf(R.player) + 1 || R.cars.length;
+  const pay = career.payout({ place, style: R.style, busts: R.busts, difficulty: settings.difficulty });
+  career.earn(pay.total);
+  $('resCash').textContent = '+' + money(pay.total);
+  const parts = $('resCashParts');
+  parts.innerHTML = '';
+  const add = (label, val) => { const s = document.createElement('span'); s.textContent = label + ' '; const b = document.createElement('b'); b.textContent = val; s.appendChild(b); parts.appendChild(s); };
+  add(ordinal(place).toLowerCase() + ' place', money(pay.prize));
+  add('Style', money(pay.styleBonus));
+  if (pay.mul !== 1) add(diff().label + ' rivals', '×' + pay.mul);
+  if (pay.fines) add('Police fines', '−' + money(pay.fines));
+  add('Bank', money(career.cash));
+  $('resEarn').hidden = false;
+}
 function showResults() {
   race.resultsShown = true;
   refreshResults();
+  payRace();
   hud.show(false);
   $('touch').hidden = true;
   show('results');
@@ -953,13 +1125,31 @@ function toGarage() {
 
 document.addEventListener('visibilitychange', () => { if (document.hidden && state === 'race') pause(); });
 
+// ------------------------------------------------------------------ phones
+let wakeLock = null;
+async function keepAwake(on) {
+  try {
+    if (on && !wakeLock && navigator.wakeLock) { wakeLock = await navigator.wakeLock.request('screen'); wakeLock.addEventListener('release', () => { wakeLock = null; }); }
+    else if (!on && wakeLock) { await wakeLock.release(); wakeLock = null; }
+  } catch (e) { /* not supported or denied */ }
+}
+function phoneSetup() {
+  // Android: go fullscreen and lock to landscape (iPhone Safari has no page fullscreen; Add to Home Screen does it)
+  const el = document.documentElement;
+  if (!document.fullscreenElement && el.requestFullscreen) {
+    el.requestFullscreen({ navigationUI: 'hide' }).then(() => screen.orientation?.lock?.('landscape').catch(() => {})).catch(() => {});
+  }
+  if (settings.tilt) input.enableTilt();
+}
+document.addEventListener('visibilitychange', () => { if (!document.hidden && (state === 'race' || state === 'paused')) keepAwake(true); });
+
 // ------------------------------------------------------------------ UI wiring
 function bindUI() {
   const click = (id, fn) => $(id).addEventListener('click', e => { audio.init(); audio.click(); fn(e); });
   click('btnPlay', () => { toGarage(); });
   click('btnPrev', () => { settings.car = (settings.car + CAR_LIST.length - 1) % CAR_LIST.length; saveSettings(); garageCar(); });
   click('btnNext', () => { settings.car = (settings.car + 1) % CAR_LIST.length; saveSettings(); garageCar(); });
-  click('btnRace', () => { saveSettings(); startRace(); });
+  click('btnRace', () => { saveSettings(); if (isTouch) phoneSetup(); startRace(); });
   click('btnResume', () => resume());
   click('btnRestart', () => { audio.setRaceAudio(false); startRace(); });
   click('btnQuit', () => toGarage());
@@ -972,6 +1162,8 @@ function bindUI() {
   click('btnSettings2', () => openSettings('pause'));
   click('btnTitleSettings', () => openSettings('title'));
   click('btnCloseSettings', () => { $('scr-settings').hidden = true; });
+  click('btnUpgrades', () => { renderUpgrades(); $('scr-upgrades').hidden = false; });
+  click('btnCloseUpgrades', () => { $('scr-upgrades').hidden = true; updateCarStats(); });
 
   const sw = $('swatches');
   PAINTS.forEach((p, i) => {
@@ -1022,6 +1214,12 @@ function bindUI() {
   document.querySelectorAll('[data-diff]').forEach(b => b.addEventListener('click', () => { audio.init(); audio.hover(); settings.difficulty = b.dataset.diff; saveSettings(); updateRaceOpts(); }));
   document.querySelectorAll('[data-opt]').forEach(b => b.addEventListener('click', () => { audio.init(); audio.hover(); settings[b.dataset.opt] = !settings[b.dataset.opt]; saveSettings(); updateRaceOpts(); }));
   $('setAutoGas').addEventListener('change', e => { settings.autoGas = e.target.checked; input.autoGas = settings.autoGas; saveSettings(); });
+  $('setTilt').addEventListener('change', async e => {
+    const on = e.target.checked;
+    // iPhone asks for motion permission, and only from a tap
+    if (on && !(await input.enableTilt())) { e.target.checked = false; return; }
+    settings.tilt = on; input.tilt = on; saveSettings();
+  });
   $('setFps').addEventListener('change', e => { settings.fps = e.target.checked; $('fps').hidden = !settings.fps; saveSettings(); });
   $('fps').hidden = !settings.fps;
   updateRaceOpts();
@@ -1029,7 +1227,8 @@ function bindUI() {
   // keyboard shortcut on menus
   window.addEventListener('keydown', e => {
     if (state === 'title' && (e.code === 'Enter' || e.code === 'Space')) { audio.init(); toGarage(); }
-    else if (state === 'garage' && $('scr-settings').hidden) {
+    else if (state === 'garage' && !$('scr-upgrades').hidden && e.code === 'Escape') $('btnCloseUpgrades').click();
+    else if (state === 'garage' && $('scr-settings').hidden && $('scr-upgrades').hidden) {
       if (e.code === 'ArrowLeft') $('btnPrev').click();
       else if (e.code === 'ArrowRight') $('btnNext').click();
       else if (e.code === 'Enter') $('btnRace').click();
@@ -1043,6 +1242,7 @@ function syncSettingsUI() {
   document.querySelectorAll('[name=quality]').forEach(r => { r.checked = r.value === settings.quality; });
   document.querySelectorAll('[name=camera]').forEach(r => { r.checked = +r.value === settings.camera; });
   $('setAutoGas').checked = settings.autoGas;
+  $('setTilt').checked = settings.tilt;
   $('setFps').checked = settings.fps;
 }
 

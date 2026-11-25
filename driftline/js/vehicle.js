@@ -282,8 +282,8 @@ export class Vehicle {
     const wantBoost = c.nitro && this.nitro > 0.002 && fwd > 4;
     this.boostStarted = wantBoost && !this.boosting;
     this.boosting = wantBoost;
-    if (this.boosting) this.nitro = Math.max(0, this.nitro - dt * 0.21);
-    const top = P.top * this.topMul * (this.boosting ? 1.22 : 1);
+    if (this.boosting) this.nitro = Math.max(0, this.nitro - dt * (P.nitroDrain ?? 0.21));
+    const top = P.top * this.topMul * (this.boosting ? (P.boost ?? 1.22) : 1);
 
     let a = 0;
     const x = fwd / top;
@@ -291,7 +291,7 @@ export class Vehicle {
       if (fwd < -0.5) a += 24 * c.throttle;
       else a += c.throttle * P.accel * this.accelMul * Math.max(0, 1 - Math.pow(Math.max(0, x), 2.6));
     }
-    if (this.boosting) a += 13 * Math.max(0, 1 - Math.max(0, x));
+    if (this.boosting) a += 13 * ((P.boost ?? 1.22) / 1.22) * Math.max(0, 1 - Math.max(0, x));
     if (c.brake > 0) {
       if (fwd > 0.5) a -= c.brake * 32;
       else if (fwd > -14) a -= c.brake * 10;

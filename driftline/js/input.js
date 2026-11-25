@@ -9,6 +9,9 @@ export class Input {
     this.usingTouch = false;
     this.padPrev = [];
     this.lastSource = 'keyboard';
+    this.tilt = false;
+    this.tiltSteer = null;
+    this._tiltBound = false;
 
     const keyMap = {
       Escape: 'pause', KeyP: 'pause', KeyC: 'camera', KeyR: 'reset', KeyM: 'mute',
@@ -50,6 +53,29 @@ export class Input {
     window.addEventListener('gamepadconnected', () => { this.lastSource = 'gamepad'; });
   }
 
+  /** start listening to the phone's motion sensor; on iPhone this must run from a tap */
+  async enableTilt() {
+    const DOE = window.DeviceOrientationEvent;
+    if (!DOE) return false;
+    if (typeof DOE.requestPermission === 'function') {
+      try { if (await DOE.requestPermission() !== 'granted') return false; } catch (e) { return false; }
+    }
+    if (!this._tiltBound) {
+      this._tiltBound = true;
+      window.addEventListener('deviceorientation', e => {
+        if (e.beta === null) return;
+        // landscape: tipping the phone like a steering wheel changes beta; the sign flips with the side it is turned to
+        const ang = (screen.orientation && screen.orientation.angle) ?? window.orientation ?? 90;
+        const side = ang === 270 || ang === -90 ? -1 : 1;
+        const deg = e.beta * side;
+        const dead = 2.5, full = 24;
+        const a = Math.abs(deg);
+        this.tiltSteer = a < dead ? 0 : Math.sign(deg) * Math.min(1, (a - dead) / (full - dead));
+      });
+    }
+    return true;
+  }
+
   _recalcTouch() {
     for (const k in this.touch) this.touch[k] = false;
     for (const ctl of this.pointers.values()) this.touch[ctl] = true;
@@ -74,6 +100,7 @@ export class Input {
     const t = this.touch;
     if (t.left) steer -= 1;
     if (t.right) steer += 1;
+    if (this.tilt && this.tiltSteer !== null && !t.left && !t.right) steer += this.tiltSteer;
     if (t.gas) throttle = 1;
     if (t.brake) brake = 1;
     if (t.drift) handbrake = true;
