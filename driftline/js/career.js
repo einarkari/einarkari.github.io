@@ -26,7 +26,19 @@ export class Career {
     } catch (e) { /* storage unavailable: start fresh */ }
   }
 
-  save() { try { localStorage.setItem(KEY, JSON.stringify({ cash: this.cash, up: this.up })); } catch (e) { /* ignore */ } }
+  data() { return { cash: this.cash, up: this.up }; }
+
+  save() {
+    try { localStorage.setItem(KEY, JSON.stringify(this.data())); } catch (e) { /* ignore */ }
+    if (this.onSave) this.onSave(this.data());
+  }
+
+  /** swap in another save (an account's cloud progress, or the guest save after logging out) */
+  replace(d, persist = true) {
+    this.cash = Math.max(0, Math.floor((d && d.cash) ?? START_CASH));
+    this.up = (d && d.up) || {};
+    if (persist) { try { localStorage.setItem(KEY, JSON.stringify(this.data())); } catch (e) { /* ignore */ } }
+  }
 
   levels(carId) {
     const u = this.up[carId] || {};

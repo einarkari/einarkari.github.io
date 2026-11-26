@@ -238,6 +238,7 @@ html:not(.touch) .keys.tch { display: none; }
 .carinfo { grid-column: 1; grid-row: 2; align-self: center; display: grid; gap: 6px; }
 .carinfo .idx { font-family: var(--display); color: var(--dim); font-size: 20px; letter-spacing: 0.1em; }
 .carinfo h2 { font-family: var(--display); font-size: clamp(48px, 8vh, 72px); font-style: italic; font-weight: 600; margin: 0; line-height: 0.85; text-wrap: balance; }
+.carinfo .brand { font-family: var(--display); font-size: clamp(22px, 3.4vh, 30px); letter-spacing: 0.16em; text-transform: uppercase; line-height: 0.9; margin-bottom: -4px; }
 .carinfo .klass { color: var(--orange); font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; font-size: 13px; }
 .stats { display: grid; gap: 8px; margin: 12px 0 4px; }
 .stat { display: grid; grid-template-columns: 96px 1fr; align-items: center; gap: 10px; font-weight: 700; font-size: 13px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--dim); }
@@ -435,6 +436,15 @@ html:not(.touch) .touchonly { display: none; }
 
 /* ---------------------------------------------------------------- touch: no speedometer, nitro level on the button */
 html.touch #hud .br { display: none; }
+/* on-screen control size (Settings): scales every touch button from its own corner */
+#touch .tbtn { zoom: var(--ctl, 1); }
+.ctlpreview { display: flex; align-items: flex-end; gap: 4px; height: 64px; padding: 6px 8px; border-radius: 10px; background: linear-gradient(#cfe0ee, #9fb2c2); }
+.ctlpreview i { display: block; border: 2px solid rgba(255,255,255,0.85); background: rgba(16,21,31,0.35); border-radius: 6px; flex: none; }
+.ctlpreview span { flex: 1; }
+.pv-steer { width: calc(18px * var(--ctl, 1)); height: calc(24px * var(--ctl, 1)); }
+.pv-round { width: calc(16px * var(--ctl, 1)); height: calc(16px * var(--ctl, 1)); border-radius: 50% !important; align-self: center; }
+.pv-brake { width: calc(17px * var(--ctl, 1)); height: calc(21px * var(--ctl, 1)); }
+.pv-gas { width: calc(18px * var(--ctl, 1)); height: calc(34px * var(--ctl, 1)); }
 @media (max-height: 480px) {
   /* phones: the upgrade shop as a 2x2 grid so all four upgrades and Done fit without scrolling */
   .upcard { width: min(760px, 100%) !important; gap: 8px !important; padding: 12px 16px !important; }
@@ -460,6 +470,101 @@ html.touch #hud .br { display: none; }
 .tnitro span, .tnitro small { position: relative; pointer-events: none; line-height: 1; }
 .tnitro small { font-family: var(--display); font-size: 0.95em; letter-spacing: 0.04em; opacity: 0.9; }
 .tnitro.full { box-shadow: 0 0 0 3px rgba(52,216,255,0.55), 0 0 22px rgba(52,216,255,0.6); }
+
+/* ---------------------------------------------------------------- welcome / accounts */
+.welcome { display: grid; place-items: center; background: linear-gradient(90deg, rgba(238,242,246,0.9), rgba(238,242,246,0.55)); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); z-index: 4; }
+.wcard { width: min(420px, 100%) !important; justify-items: stretch; text-align: center; gap: 16px !important; }
+.wcard .logo { font-size: 64px; justify-content: center; }
+.wview { display: grid; gap: 10px; }
+.wlede { margin: 0 0 4px; color: var(--dim); font-weight: 600; font-size: 17px; line-height: 1.35; }
+.wcard .cta { justify-self: stretch; clip-path: none; border-radius: 10px; }
+.wbtn { border: 1px solid var(--line); background: #fff; font-size: 15px; padding: 11px 16px; display: flex; align-items: center; justify-content: center; gap: 10px; }
+.wbtn .g { font-family: Arial, sans-serif; font-size: 17px; color: #4285f4; }
+.linkbtn { font-weight: 700; color: var(--dim); text-decoration: underline; text-underline-offset: 3px; padding: 6px; font-size: 14px; letter-spacing: 0.02em; }
+.linkbtn:hover { color: var(--orange); }
+#wGuest { font-size: 16px; color: var(--ink); }
+.wtabs { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; margin-bottom: 4px; }
+.wtabs button { padding: 9px 4px 7px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; font-size: 13px; color: var(--dim); }
+.wtabs button[aria-selected=true] { background: var(--ink); color: #fff; }
+.in { display: grid; gap: 4px; text-align: left; }
+.in span { font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; font-weight: 700; color: var(--dim); }
+.in input { font: 600 16px var(--body); padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: #f8f9fb; color: var(--ink); -webkit-user-select: text; user-select: text; }
+.in input:focus { outline: 2px solid var(--orange); outline-offset: 0; background: #fff; }
+.werr { margin: 0; min-height: 1.2em; color: var(--bad); font-weight: 700; font-size: 14px; }
+.werr.ok { color: var(--good); }
+.wrow { display: flex; justify-content: space-between; }
+.wcard button:disabled { opacity: 0.55; cursor: progress; }
+.acct { display: flex; align-items: center; gap: 8px; padding: 7px 14px 5px; border-radius: 10px; font-weight: 700; letter-spacing: 0.1em; font-size: 13px; text-transform: uppercase; max-width: 190px; }
+.acct span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.acct i, .aname i { width: 10px; height: 10px; border-radius: 50%; background: rgba(16,21,31,0.25); flex: none; }
+.acct.on i, .aname i { background: var(--good); box-shadow: 0 0 0 3px rgba(25,163,90,0.22); }
+.acard .aname { display: flex; align-items: center; gap: 12px; }
+.acard .aname b { display: block; font-family: var(--display); font-size: 30px; font-weight: 500; line-height: 1; }
+.acard .aname span { color: var(--dim); font-weight: 600; }
+.setbtn { border: 1px solid var(--line); justify-self: start; }
+
+/* ---------------------------------------------------------------- tutorial */
+.tut { z-index: 7; }
+.tcard { width: min(540px, 100%) !important; gap: 12px !important; }
+.thead { display: flex; justify-content: space-between; align-items: center; }
+.tstep { font-weight: 700; letter-spacing: 0.18em; font-size: 12px; color: var(--orange); }
+.tart { min-height: 132px; border-radius: 14px; background: linear-gradient(160deg, #dfe8f1, #b9c7d4); display: flex; align-items: center; justify-content: center; gap: 14px; padding: 14px; flex-wrap: wrap; }
+.tcard h2 { font-size: 46px !important; }
+.ttext { margin: 0; font-size: 18px; line-height: 1.4; font-weight: 600; color: var(--ink); }
+.ttext kbd, .tart kbd { font-family: var(--body); font-weight: 700; border: 1px solid var(--line); border-bottom-width: 3px; border-radius: 6px; padding: 0 7px; background: #fff; color: var(--ink); }
+.tart kbd { min-width: 44px; height: 44px; display: inline-grid; place-items: center; font-size: 17px; box-shadow: 0 2px 6px rgba(16,21,31,0.15); }
+.tart kbd.wide { min-width: 150px; }
+.tart kbd.on { background: var(--orange); color: #fff; border-color: #c94a06; }
+.keys2 { display: grid; grid-template-columns: repeat(3, 44px); grid-template-rows: 44px 44px; gap: 5px; }
+.tart kbd { box-sizing: border-box; padding: 0; }
+.tart kbd.wide { padding: 0 14px; }
+.keys2 kbd:nth-child(1) { grid-column: 2; grid-row: 1; }
+.keys2 kbd:nth-child(2) { grid-column: 1; grid-row: 2; }
+.keys2 kbd:nth-child(3) { grid-column: 2; grid-row: 2; }
+.keys2 kbd:nth-child(4) { grid-column: 3; grid-row: 2; }
+.tb { display: grid; place-items: center; color: #fff; font-family: var(--display); letter-spacing: 0.04em; font-size: 15px; background: rgba(16,21,31,0.55); border: 2px solid rgba(255,255,255,0.85); border-radius: 12px; width: 58px; height: 72px; }
+.tb.r { border-radius: 50%; width: 64px; height: 64px; font-size: 14px; }
+.tb.gas { height: 96px; border-color: rgb(125,255,176); }
+.tb.brk { border-color: rgb(255,120,120); }
+.tb.nit { border-color: rgb(120,190,255); background: linear-gradient(to top, rgba(31,139,255,0.85) 60%, rgba(16,21,31,0.55) 60%); }
+.tb.dri { border-color: rgb(255,210,90); }
+.tb.on { background: rgba(255,107,26,0.75); }
+.tart .chip { animation: none; }
+.tart .plus { font-family: var(--display); font-size: 34px; color: #fff; text-shadow: 0 2px 6px rgba(16,21,31,0.35); }
+.tart .mini-heat { width: 220px; padding: 8px 12px; border-radius: 10px; background: #fff; display: grid; gap: 5px; font-family: var(--display); color: var(--bad); letter-spacing: 0.2em; text-align: center; }
+.tart .mini-heat i { display: block; height: 6px; border-radius: 3px; background: linear-gradient(90deg, #ffa23a 0 62%, rgba(16,21,31,0.12) 62%); }
+.tfoot { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+.tdots { display: flex; gap: 6px; }
+.tdots i { width: 8px; height: 8px; border-radius: 50%; background: rgba(16,21,31,0.18); }
+.tdots i.on { background: var(--orange); width: 22px; border-radius: 4px; }
+.tfoot .btnrow .ghost { border: 1px solid var(--line); }
+.hint { position: absolute; left: 50%; top: 31%; transform: translate(-50%, 8px); max-width: min(560px, 80vw); padding: 10px 18px 8px; border-radius: 12px; background: rgba(16,21,31,0.82); color: #fff; font-family: var(--body); font-weight: 700; font-size: clamp(17px, 2.6vh, 22px); line-height: 1.3; text-align: center; opacity: 0; transition: opacity 0.3s, transform 0.3s; pointer-events: none; box-shadow: 0 8px 24px rgba(16,21,31,0.3); }
+.hint.on { opacity: 1; transform: translate(-50%, 0); }
+.hint b { color: var(--orange-2); }
+@media (max-height: 480px) {
+  .wcard { gap: 8px !important; padding: 12px 18px !important; width: min(560px, 100%) !important; }
+  .wcard .logo { font-size: 38px; }
+  .wlede { font-size: 14px; margin: 0; }
+  .wview { gap: 6px; }
+  #wForm { grid-template-columns: 1fr 1fr; column-gap: 10px; }
+  #wForm .wtabs, #wForm .werr, #wForm .wrow, #wForm #wNameRow { grid-column: 1 / -1; }
+  #wForm .in input { padding: 7px 10px; }
+  .wcard .cta { font-size: 24px; padding: 6px 20px 2px; }
+  .wbtn { padding: 7px 12px; }
+  .wcard .note { display: none; }
+  .tcard { gap: 6px !important; padding: 12px 16px !important; width: min(640px, 100%) !important; }
+  .tart { min-height: 86px; padding: 8px; }
+  .tart kbd { min-width: 34px; height: 34px; font-size: 14px; }
+  .keys2 { grid-template-columns: repeat(3, 34px); grid-template-rows: 34px 34px; }
+  .tb { width: 48px; height: 54px; font-size: 12px; }
+  .tb.gas { height: 70px; }
+  .tb.r { width: 48px; height: 48px; font-size: 11px; }
+  .tcard h2 { font-size: 32px !important; }
+  .ttext { font-size: 15px; }
+  .hint { top: 24%; }
+  .acct { padding: 5px 10px 3px; font-size: 11px; max-width: 120px; }
+  .carinfo .brand { font-size: 17px; margin-bottom: -2px; }
+}
 @media (prefers-reduced-motion: reduce) {
   .chip, .msg.on, .count.on, .drift, .keysbar { animation: none !important; transition: none !important; }
 }
@@ -511,6 +616,7 @@ html.touch #hud .br { display: none; }
       <div class="npct"><span>NITRO</span><b id="hNitroPct">30%</b></div>
     </div>
     <div id="hSlip" class="slip">SLIPSTREAM</div>
+    <div id="hHint" class="hint" aria-live="polite"></div>
     <div class="keysbar glass"><span><b>WASD</b>DRIVE</span><span><b>SPACE</b>DRIFT</span><span><b>SHIFT</b>NITRO</span><span><b>R</b>RESET</span><span><b>C</b>CAMERA</span><span><b>ESC</b>PAUSE</span></div>
     <div id="hMsg" class="msg"></div>
     <div id="hCount" class="count"></div>
@@ -555,11 +661,12 @@ html.touch #hud .br { display: none; }
   <section id="scr-garage" class="screen garage" hidden>
     <header class="gbar">
       <div class="logo"><span class="l1">DRIFT</span><span class="l2">LINE</span></div>
-      <div class="gbtns"><div class="cash glass" aria-label="Your cash"><span>CASH</span><b id="cashAmt">$0</b></div><button id="btnSettings" class="ghost glass">Settings</button></div>
+      <div class="gbtns"><button id="btnAccount" class="acct glass" hidden><i aria-hidden="true"></i><span id="acctName">Guest</span></button><div class="cash glass" aria-label="Your cash"><span>CASH</span><b id="cashAmt">$0</b></div><button id="btnSettings" class="ghost glass">Settings</button></div>
     </header>
     <div class="carinfo">
       <div class="idx" id="carIdx">1 / 4</div>
-      <h2 id="carName">Halcyon GT</h2>
+      <div class="brand" id="carBrand"></div>
+      <h2 id="carName"></h2>
       <div class="klass" id="carClass"></div>
       <div class="stats">
         <div class="stat"><span>Speed</span><div class="bar" id="bar-speed"></div></div>
@@ -602,6 +709,51 @@ html.touch #hud .br { display: none; }
         <div id="tracks" class="tracks"></div>
       </div>
       <button id="btnRace" class="cta race">Race</button>
+    </div>
+  </section>
+
+  <section id="scr-welcome" class="screen welcome" hidden>
+    <div class="card wcard">
+      <div class="logo"><span class="l1">DRIFT</span><span class="l2">LINE</span></div>
+      <div id="wChoose" class="wview">
+        <p class="wlede">Make an account to save your cash and upgrades online and race on any device.</p>
+        <button id="wSignup" class="cta">Sign up</button>
+        <button id="wLogin" class="ghost wbtn">Log in</button>
+        <button id="wGuest" class="linkbtn">Continue as guest</button>
+        <p class="note">Guests keep their progress on this device only. You can sign up later from the garage.</p>
+      </div>
+      <form id="wForm" class="wview" hidden novalidate>
+        <div class="wtabs" role="tablist">
+          <button type="button" role="tab" data-auth="signup">Sign up</button>
+          <button type="button" role="tab" data-auth="login">Log in</button>
+        </div>
+        <label class="in" id="wNameRow"><span>Player name</span><input id="wName" autocomplete="nickname" maxlength="20" placeholder="Shown on your profile"></label>
+        <label class="in"><span>Email</span><input id="wEmail" type="email" autocomplete="email" inputmode="email"></label>
+        <label class="in"><span>Password</span><input id="wPass" type="password" autocomplete="current-password" placeholder="At least 6 characters"></label>
+        <p id="wErr" class="werr" role="alert"></p>
+        <button id="wSubmit" class="cta" type="submit">Sign up</button>
+        <button id="wGoogle" type="button" class="ghost wbtn"><b class="g" aria-hidden="true">G</b>Continue with Google</button>
+        <div class="wrow"><button type="button" id="wForgot" class="linkbtn">Forgot password?</button><button type="button" id="wBack" class="linkbtn">Back</button></div>
+      </form>
+    </div>
+  </section>
+
+  <section id="scr-account" class="modal" hidden>
+    <div class="card acard">
+      <h2>Account</h2>
+      <div class="aname"><i aria-hidden="true"></i><div><b id="aName">Player</b><span id="aEmail"></span></div></div>
+      <p class="note">Your cash, upgrades and tutorial progress are saved to this account automatically.</p>
+      <div class="btnrow"><button id="btnAccountDone" class="cta">Done</button><button id="btnLogout" class="ghost">Log out</button></div>
+    </div>
+  </section>
+
+  <section id="scr-tutorial" class="modal tut" hidden>
+    <div class="card tcard" role="dialog" aria-labelledby="tTitle">
+      <div class="thead"><span class="tstep" id="tStep">1 / 6</span><button id="tSkip" class="linkbtn">Skip tutorial</button></div>
+      <div class="tart" id="tArt" aria-hidden="true"></div>
+      <h2 id="tTitle"></h2>
+      <p class="ttext" id="tText"></p>
+      <div class="tfoot"><div class="tdots" id="tDots"></div><div class="btnrow"><button id="tBack" class="ghost">Back</button><button id="tNext" class="cta">Next</button></div></div>
     </div>
   </section>
 
@@ -682,7 +834,17 @@ html.touch #hud .br { display: none; }
       </div>
       <label class="toggle"><span>Auto-accelerate on touch screens</span><input id="setAutoGas" type="checkbox"></label>
       <label class="toggle touchonly"><span>Steer by tilting the phone</span><input id="setTilt" type="checkbox"></label>
+      <div class="field touchonly"><span>Size of on-screen controls</span>
+        <div class="seg">
+          <label><input type="radio" name="ctlsize" value="0.8">Small</label>
+          <label><input type="radio" name="ctlsize" value="1">Medium</label>
+          <label><input type="radio" name="ctlsize" value="1.2">Large</label>
+          <label><input type="radio" name="ctlsize" value="1.4">Extra large</label>
+        </div>
+      </div>
+      <div class="ctlpreview touchonly" aria-hidden="true"><i class="pv-steer"></i><i class="pv-steer"></i><span></span><i class="pv-round"></i><i class="pv-brake"></i><i class="pv-gas"></i></div>
       <label class="toggle"><span>Show frame rate</span><input id="setFps" type="checkbox"></label>
+      <button id="btnTutorial" class="ghost setbtn">Show the tutorial again</button>
       <p class="note credit">Engine sound made from recordings on freesound.org: sports car acceleration by florianreichelt (CC0), V12 rev by Janosch-JR (CC0) and "Lamborghini Sounds" by JaimeLopes (CC BY 4.0, cut into loops).</p>
       <div class="btnrow"><button id="btnCloseSettings" class="cta">Done</button></div>
     </div>

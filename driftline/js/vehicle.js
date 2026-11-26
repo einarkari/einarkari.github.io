@@ -6,22 +6,22 @@ const clamp = THREE.MathUtils.clamp;
 
 export const CAR_LIST = [
   {
-    id: 'halcyon', name: 'Halcyon GT', klass: 'Mid-engine V10 · AWD',
+    id: 'halcyon', brand: 'Lamborgata', model: 'Aventura SVX', name: 'Lamborgata Aventura SVX', klass: 'Mid-engine V12 · AWD',
     top: 88, accel: 15.6, turn: 1.0, grip: 1.05, drift: 1.0, fill: 1.0,
     bars: { speed: 0.84, accel: 0.86, handling: 0.82, drift: 0.74 },
   },
   {
-    id: 'ronin', name: 'Ronin RS', klass: 'Rear-engine flat-six · RWD',
+    id: 'ronin', brand: 'Porsha', model: '912 GT3 RX', name: 'Porsha 912 GT3 RX', klass: 'Rear-engine flat-six · RWD',
     top: 85, accel: 16.2, turn: 1.08, grip: 1.15, drift: 0.92, fill: 0.95,
     bars: { speed: 0.76, accel: 0.9, handling: 0.95, drift: 0.68 },
   },
   {
-    id: 'vortex', name: 'Vortex X', klass: 'Hybrid V8 hypercar · RWD',
+    id: 'vortex', brand: 'Bugatata', model: 'Suron', name: 'Bugatata Suron', klass: 'Quad-turbo W16 hypercar · AWD',
     top: 95, accel: 15.0, turn: 0.95, grip: 0.98, drift: 1.0, fill: 1.0,
     bars: { speed: 0.98, accel: 0.8, handling: 0.72, drift: 0.76 },
   },
   {
-    id: 'kodiak', name: 'Kodiak R', klass: 'Supercharged V8 · RWD',
+    id: 'kodiak', brand: 'Fjord', model: 'Mustank GT500', name: 'Fjord Mustank GT500', klass: 'Supercharged V8 · RWD',
     top: 86, accel: 15.8, turn: 1.0, grip: 0.95, drift: 1.22, fill: 1.3,
     bars: { speed: 0.78, accel: 0.86, handling: 0.7, drift: 0.98 },
   },

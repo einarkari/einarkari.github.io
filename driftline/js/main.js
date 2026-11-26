@@ -16,6 +16,7 @@ import { AudioEngine } from './audio.js';
 import { HUD, fmtTime, ordinal } from './hud.js';
 import { Input } from './input.js';
 import { Career, UPGRADES, MAX_LEVEL, upgradedSpec, money } from './career.js';
+import { Account } from './account.js';
 
 const $ = id => document.getElementById(id);
 const clamp = THREE.MathUtils.clamp;
@@ -25,7 +26,7 @@ const dampAngle = (a, b, k, dt) => a + wrapA(b - a) * (1 - Math.exp(-k * dt));
 
 // ------------------------------------------------------------------ settings
 const isTouch = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window;
-const DEFAULTS = { volume: 0.8, quality: 'high', camera: 0, autoGas: false, tilt: false, fps: false, car: 0, paint: 7, stripes: true, track: 0, difficulty: 'normal', traffic: true, police: true };
+const DEFAULTS = { volume: 0.8, quality: 'high', camera: 0, autoGas: false, tilt: false, ctlSize: 1, fps: false, car: 0, paint: 7, stripes: true, track: 0, difficulty: 'normal', traffic: true, police: true };
 // AI pace: skill scaling, slow-down when ahead of you, catch-up when behind you
 const DIFFICULTY = {
   easy: { label: 'Easy', skill: s => s * 0.9, ahead: 0.11, behind: 0.03 },
@@ -116,6 +117,7 @@ const audio = new AudioEngine();
 audio.volume = settings.volume;
 const hud = new HUD();
 const career = new Career();
+const account = new Account();
 input.tilt = settings.tilt;
 let assets = null, factory = null, race = null;
 let state = 'loading';
@@ -123,9 +125,11 @@ const garage = { scene: new THREE.Scene(), table: new THREE.Group(), car: null, 
 const garageCam = new THREE.PerspectiveCamera(34, 1, 0.1, 200);
 
 if (isTouch) document.documentElement.classList.add('touch');
+const applyCtlSize = () => document.documentElement.style.setProperty('--ctl', String(settings.ctlSize || 1));
+applyCtlSize();
 
 // ------------------------------------------------------------------ screens
-const screens = ['loading', 'title', 'garage', 'pause', 'results'];
+const screens = ['loading', 'welcome', 'title', 'garage', 'pause', 'results'];
 function show(name) {
   for (const s of screens) $('scr-' + s).hidden = s !== name;
   $('scr-settings').hidden = true;
@@ -225,7 +229,8 @@ function garageCar() {
   }
   garage.carKey = key;
   // UI
-  $('carName').textContent = spec.name;
+  $('carBrand').textContent = spec.brand;
+  $('carName').textContent = spec.model;
   $('carClass').textContent = spec.klass;
   updateCarStats();
   $('carIdx').textContent = `${settings.car + 1} / ${CAR_LIST.length}`;
@@ -299,7 +304,7 @@ function renderGarage(dt) {
   garageCam.lookAt(0, aspect < 1.4 ? 1.1 : 0.45, 0);
   renderPass.scene = garage.scene;
   renderPass.camera = garageCam;
-  if (ao) { ao.scene = garage.scene; ao.camera = garageCam; ao.blendIntensity = 0.75; }
+  if (ao) ao.enabled = false; // the garage stays crisp: no occlusion pass on the showroom car
   bloom.enabled = false;
   if (pixelRatio !== maxPR) { pixelRatio = maxPR; renderer.setPixelRatio(pixelRatio); resize(); }
   renderer.toneMappingExposure = 0.95;
@@ -436,6 +441,7 @@ function startRace() {
   };
   for (const cop of police.pool) scene.add(cop.root);
   carReflections(player);
+  coach.on = !flag(COACH_KEY); coach.step = 0; coach.t = 0; coach.text = null; showHint('');
   cam.init = false;
   cam.mode = settings.camera;
   hud.setupRace(race);
@@ -675,6 +681,7 @@ function playerEvents(h) {
 
 function onPlayerFinish() {
   const R = race, p = R.player;
+  if (coach.on) { coach.on = false; showHint(''); setFlag(COACH_KEY); }
   const place = R.finishOrder.indexOf(p) + 1;
   R.phase = 'finished';
   R.finishT = 0;
@@ -934,6 +941,7 @@ function raceFrame(dt) {
   hud.driftScore(R.drift.active && R.drift.pts > 30, R.drift.pts, R.drift.mul);
   const p = R.player;
   if (isTouch) touchNitro(p.nitro);
+  updateCoach(dt);
   const sl = clamp((p.speed - 50) / 40, 0, 1) * 0.65 + (p.boosting ? 0.55 : 0);
   speedLines.draw(dt, R.phase === 'intro' ? 0 : sl, p.boosting);
 
@@ -941,7 +949,7 @@ function raceFrame(dt) {
   for (const pp of [R.fx.smoke, R.fx.sparks, R.fx.glow, ...R.world.glowPoints]) pp.mat.uniforms.scale.value = pScale;
   renderPass.scene = R.scene;
   renderPass.camera = camera;
-  if (ao) { ao.scene = R.scene; ao.camera = camera; ao.blendIntensity = 1; }
+  if (ao) { ao.enabled = true; ao.scene = R.scene; ao.camera = camera; ao.blendIntensity = 1; }
   updateReflections(R);
   bloom.enabled = settings.quality !== 'low';
   const bl = R.world.bloom;
@@ -1114,7 +1122,7 @@ function loop(now) {
     raceFrame(dt);
   } else if (state === 'paused') {
     // keep the frozen frame
-  } else if (state === 'garage' || state === 'title' || state === 'settings') {
+  } else if (state === 'garage' || state === 'title' || state === 'welcome' || state === 'settings') {
     renderGarage(dt);
   }
 }
@@ -1163,6 +1171,7 @@ function resume() {
   last = performance.now();
 }
 function toGarage() {
+  showHint('');
   if (race) { audio.setRaceAudio(false); disposeRace(); }
   hud.show(false);
   $('touch').hidden = true;
@@ -1193,10 +1202,233 @@ function phoneSetup() {
 }
 document.addEventListener('visibilitychange', () => { if (!document.hidden && (state === 'race' || state === 'paused')) keepAwake(true); });
 
+
+// ------------------------------------------------------------------ first-time flow: accounts, tutorial, in-race hints
+const ONBOARD_KEY = 'driftline.account', TUT_KEY = 'driftline.tutorial', COACH_KEY = 'driftline.coach';
+const OWNER_KEY = 'driftline.career.owner', GUEST_SAVE = 'driftline.career.guest';
+const lsGet = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
+const lsSet = (k, v) => { try { if (v === null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) { /* ignore */ } };
+const flag = k => lsGet(k) === '1';
+function setFlag(k, on = true) {
+  lsSet(k, on ? '1' : null);
+  if (account.user) account.save({ tutorial: flag(TUT_KEY), coach: flag(COACH_KEY) });
+}
+
+/** title "Play" and the welcome choices end up here: tutorial first time, then the garage */
+function enterGame() {
+  $('scr-welcome').hidden = true;
+  if (!flag(TUT_KEY)) openTutorial(() => toGarage());
+  else toGarage();
+}
+
+// ---- accounts
+let authMode = 'signup', authFromGarage = false;
+function updateAccountUI() {
+  const b = $('btnAccount');
+  b.hidden = !account.available;
+  b.classList.toggle('on', !!account.user);
+  $('acctName').textContent = account.user ? account.displayName() : 'Guest · Sign up';
+}
+function showAuthForm(mode, fromGarage = false) {
+  authFromGarage = fromGarage;
+  $('scr-welcome').hidden = false;
+  $('wChoose').hidden = fromGarage;
+  $('wForm').hidden = !fromGarage;
+  if (fromGarage || mode) setAuthMode(mode || 'signup');
+}
+function setAuthMode(mode) {
+  authMode = mode;
+  $('wChoose').hidden = true;
+  $('wForm').hidden = false;
+  document.querySelectorAll('[data-auth]').forEach(t => t.setAttribute('aria-selected', String(t.dataset.auth === mode)));
+  $('wNameRow').hidden = mode !== 'signup';
+  $('wForgot').hidden = mode !== 'login';
+  $('wSubmit').textContent = mode === 'signup' ? 'Sign up' : 'Log in';
+  $('wPass').autocomplete = mode === 'signup' ? 'new-password' : 'current-password';
+  authMsg('');
+  setTimeout(() => (mode === 'signup' ? $('wName') : $('wEmail')).focus({ preventScroll: true }), 50);
+}
+function authMsg(text, ok = false) { const e = $('wErr'); e.textContent = text; e.classList.toggle('ok', ok); }
+function authBusy(on) { for (const id of ['wSubmit', 'wGoogle', 'wForgot', 'wBack']) $(id).disabled = on; }
+
+/** after signing in: the account's cloud save becomes the active save; a brand-new account takes over the guest's progress */
+async function adoptCloud() {
+  const uid = account.user && account.user.uid;
+  if (!uid) return;
+  const owner = lsGet(OWNER_KEY) || 'guest';
+  if (owner === 'guest') lsSet(GUEST_SAVE, JSON.stringify(career.data()));
+  let cloud = null;
+  try { cloud = await account.load(); } catch (e) { console.warn('could not load cloud save', e); }
+  if (cloud && cloud.career) {
+    career.replace(cloud.career);
+    if (cloud.tutorial) lsSet(TUT_KEY, '1');
+    if (cloud.coach) lsSet(COACH_KEY, '1');
+  } else if (owner === 'guest' || owner === uid) {
+    account.save({ career: career.data(), tutorial: flag(TUT_KEY), coach: flag(COACH_KEY) });
+    account.flush();
+  } else {
+    career.replace(null); // another player's progress was on this device: start this account fresh
+    account.save({ career: career.data() });
+  }
+  lsSet(OWNER_KEY, uid);
+  lsSet(ONBOARD_KEY, 'user');
+  if (factory) updateCarStats();
+}
+async function afterSignIn() {
+  await adoptCloud();
+  updateAccountUI();
+  $('scr-welcome').hidden = true;
+  if (authFromGarage) { updateCarStats(); return; }
+  enterGame();
+}
+async function submitAuth(e) {
+  e.preventDefault();
+  const name = $('wName').value.trim(), email = $('wEmail').value.trim(), pass = $('wPass').value;
+  if (!email) return authMsg('Enter your email address.');
+  if (!pass) return authMsg('Enter your password.');
+  authBusy(true); authMsg('');
+  try {
+    if (authMode === 'signup') await account.signUp(name || email.split('@')[0], email, pass);
+    else await account.logIn(email, pass);
+    $('wPass').value = '';
+    await afterSignIn();
+  } catch (err) { authMsg(account.errorText(err)); } finally { authBusy(false); }
+}
+async function logOut() {
+  try { await account.logOut(); } catch (e) { /* signed out locally anyway */ }
+  let guest = null;
+  try { guest = JSON.parse(lsGet(GUEST_SAVE) || 'null'); } catch (e) { /* none */ }
+  career.replace(guest);
+  lsSet(OWNER_KEY, 'guest');
+  lsSet(ONBOARD_KEY, 'guest');
+  updateAccountUI();
+  updateCarStats();
+  $('scr-account').hidden = true;
+}
+function bindAccountUI() {
+  const click = (id, fn) => $(id).addEventListener('click', e => { audio.init(); audio.click(); fn(e); });
+  click('wSignup', () => setAuthMode('signup'));
+  click('wLogin', () => setAuthMode('login'));
+  click('wGuest', () => { lsSet(ONBOARD_KEY, 'guest'); enterGame(); });
+  document.querySelectorAll('[data-auth]').forEach(t => t.addEventListener('click', () => setAuthMode(t.dataset.auth)));
+  $('wForm').addEventListener('submit', submitAuth);
+  click('wBack', () => {
+    if (authFromGarage) { $('scr-welcome').hidden = true; return; }
+    $('wForm').hidden = true; $('wChoose').hidden = false;
+  });
+  click('wForgot', async () => {
+    const email = $('wEmail').value.trim();
+    if (!email) return authMsg('Type your email above, then press “Forgot password?” again.');
+    authBusy(true);
+    try { await account.resetPassword(email); authMsg('We sent a password reset link to ' + email + '.', true); }
+    catch (err) { authMsg(account.errorText(err)); } finally { authBusy(false); }
+  });
+  click('wGoogle', async () => {
+    authBusy(true); authMsg('');
+    try { const u = await account.logInGoogle(); if (u) await afterSignIn(); }
+    catch (err) { authMsg(account.errorText(err)); } finally { authBusy(false); }
+  });
+  click('btnAccount', () => {
+    if (!account.user) { showAuthForm('signup', true); return; }
+    $('aName').textContent = account.displayName();
+    $('aEmail').textContent = account.user.email || '';
+    $('scr-account').hidden = false;
+  });
+  click('btnAccountDone', () => { $('scr-account').hidden = true; });
+  click('btnLogout', () => logOut());
+  click('btnTutorial', () => { $('scr-settings').hidden = true; lsSet(COACH_KEY, null); openTutorial(() => {}); });
+  career.onSave = d => account.save({ career: d });
+  account.onChange(updateAccountUI);
+  updateAccountUI();
+}
+
+// ---- tutorial slides
+const K = s => `<kbd>${s}</kbd>`;
+const TB = (label, cls = '') => `<span class="tb ${cls}">${label}</span>`;
+function tutorialSlides() {
+  const t = isTouch;
+  return [
+    { title: 'Welcome to Driftline', art: `<span class="chip"><span class="l">RACE</span><span class="v">8 RIVALS · 3 LAPS</span></span>`,
+      text: 'Street racing against 8 rivals. Here’s everything you need, in under a minute.' },
+    { title: 'Drive', art: t ? `${TB('◀')}${TB('▶')}<span class="plus">·</span>${TB('BRAKE', 'brk')}${TB('GAS', 'gas on')}`
+        : `<div class="keys2">${K('W')}${K('A')}${K('S')}${K('D')}</div><span class="plus">or</span><div class="keys2">${K('↑')}${K('←')}${K('↓')}${K('→')}</div>`,
+      text: t ? 'Steer with the arrows on the left. <b>GAS</b> and <b>BRAKE</b> are on the right. You can also steer by tilting the phone (turn it on in Settings).'
+        : `Hold ${K('W')} for gas and ${K('S')} to brake. Steer with ${K('A')} and ${K('D')}. The arrow keys work too.` },
+    { title: 'Drift to fill nitro', art: t ? `${TB('◀', 'on')}<span class="plus">+</span>${TB('DRIFT', 'r dri on')}` : `${K('A')}<span class="plus">+</span><kbd class="wide on">SPACE</kbd>`,
+      text: t ? 'In a corner, hold <b>DRIFT</b> while you steer. The car slides sideways, fills your nitro and earns style points.'
+        : `In a corner, hold ${K('Space')} while you steer. The car slides sideways, fills your nitro and earns style points.` },
+    { title: 'Fire your nitro', art: t ? `${TB('NITRO', 'r nit')}` : `<kbd class="wide on">SHIFT</kbd>`,
+      text: (t ? 'Tap <b>NITRO</b>' : `Press ${K('Shift')}`) + ' for a burst of speed, best on a straight. Tip: hit the gas exactly when <b>GO!</b> appears for a perfect launch.' },
+    { title: 'Racing tricks', art: `<span class="chip near"><span class="l">NEAR MISS</span><span class="v">+500</span></span><span class="chip nitro"><span class="l">SLIPSTREAM</span><span class="v">+SPEED</span></span>`,
+      text: 'Tuck in right behind a rival to slipstream: you go faster and gain nitro. Pass traffic closely for a near-miss bonus.' },
+    { title: 'Watch out for police', art: `<div class="mini-heat">HEAT<i></i></div>`,
+      text: 'Crashing into traffic raises your heat and the police come after you. Get caught and you’re busted with a $500 fine. Police and traffic can be switched off in the garage.' },
+    { title: 'Earn cash, upgrade', art: `<div class="cash big"><span>CASH</span><b>+$6,680</b></div><span class="upbtn"><span class="ul">Upgrade car</span><span class="ulv">1 / 20</span></span>`,
+      text: 'Every race pays cash. A better place, more style points and harder rivals pay more. Spend it on engine, turbo, tire and nitro upgrades in the garage.' },
+  ];
+}
+let tut = { i: 0, slides: [], done: null };
+function openTutorial(done) {
+  tut = { i: 0, slides: tutorialSlides(), done };
+  const dots = $('tDots');
+  dots.innerHTML = tut.slides.map(() => '<i></i>').join('');
+  renderTutorial();
+  $('scr-tutorial').hidden = false;
+}
+function renderTutorial() {
+  const sl = tut.slides[tut.i], n = tut.slides.length;
+  $('tStep').textContent = `${tut.i + 1} / ${n}`;
+  $('tArt').innerHTML = sl.art;
+  $('tTitle').textContent = sl.title;
+  $('tText').innerHTML = sl.text;
+  $('tBack').hidden = tut.i === 0;
+  $('tNext').textContent = tut.i === n - 1 ? 'Let’s race' : 'Next';
+  [...$('tDots').children].forEach((d, k) => d.classList.toggle('on', k === tut.i));
+}
+function closeTutorial() {
+  $('scr-tutorial').hidden = true;
+  setFlag(TUT_KEY);
+  const done = tut.done; tut.done = null;
+  if (done) done();
+}
+function bindTutorialUI() {
+  const click = (id, fn) => $(id).addEventListener('click', e => { audio.init(); audio.click(); fn(e); });
+  click('tNext', () => { if (tut.i < tut.slides.length - 1) { tut.i++; renderTutorial(); } else closeTutorial(); });
+  click('tBack', () => { if (tut.i > 0) { tut.i--; renderTutorial(); } });
+  click('tSkip', () => closeTutorial());
+}
+
+// ---- in-race hints for the first race
+const coach = { on: false, step: 0, t: 0, text: null };
+function showHint(html) {
+  if (coach.text === html) return;
+  coach.text = html;
+  const h = $('hHint');
+  if (html) h.innerHTML = html;
+  h.classList.toggle('on', !!html);
+}
+function updateCoach(dt) {
+  const R = race;
+  if (!coach.on || !R || R.phase !== 'running' || R.player.finished) return;
+  const p = R.player, t = isTouch;
+  const key = t ? { gas: 'GAS', steer: 'the arrows', drift: 'DRIFT', nitro: 'NITRO' } : { gas: 'W', steer: 'A and D', drift: 'Space', nitro: 'Shift' };
+  coach.t += dt;
+  const next = () => { coach.step++; coach.t = 0; };
+  switch (coach.step) {
+    case 0: showHint(`Hold <b>${key.gas}</b> to speed up`); if (p.speed > 20 && coach.t > 1) next(); break;
+    case 1: showHint(`Steer with <b>${key.steer}</b> and follow the road`); if (coach.t > 4) next(); break;
+    case 2: showHint(`In a corner, hold <b>${key.drift}</b> while steering to drift`); if ((R.drift.active && R.drift.time > 0.7) || coach.t > 25) next(); break;
+    case 3: showHint('Nice drift! Drifting fills your nitro'); if (coach.t > 2.5) next(); break;
+    case 4: showHint(''); if (p.nitro > 0.35 && coach.t > 2) next(); else if (coach.t > 30) next(); break;
+    case 5: showHint(`Nitro ready: press <b>${key.nitro}</b> on a straight`); if (p.boosting || coach.t > 15) next(); break;
+    case 6: showHint('Finish higher to earn more cash for upgrades'); if (coach.t > 4) { showHint(''); coach.on = false; setFlag(COACH_KEY); } break;
+  }
+}
+
 // ------------------------------------------------------------------ UI wiring
 function bindUI() {
   const click = (id, fn) => $(id).addEventListener('click', e => { audio.init(); audio.click(); fn(e); });
-  click('btnPlay', () => { toGarage(); });
+  click('btnPlay', () => enterGame());
   click('btnPrev', () => { settings.car = (settings.car + CAR_LIST.length - 1) % CAR_LIST.length; saveSettings(); garageCar(); });
   click('btnNext', () => { settings.car = (settings.car + 1) % CAR_LIST.length; saveSettings(); garageCar(); });
   click('btnRace', () => { saveSettings(); if (isTouch) phoneSetup(); startRace(); });
@@ -1263,6 +1495,7 @@ function bindUI() {
     garage.carKey = ''; garage.carId = ''; garageCar();
     if (race) $('qualityNote').hidden = false;
   }));
+  document.querySelectorAll('[name=ctlsize]').forEach(r => r.addEventListener('change', e => { settings.ctlSize = +e.target.value; applyCtlSize(); saveSettings(); }));
   document.querySelectorAll('[name=camera]').forEach(r => r.addEventListener('change', e => { settings.camera = +e.target.value; cam.mode = settings.camera; saveSettings(); }));
   document.querySelectorAll('[data-diff]').forEach(b => b.addEventListener('click', () => { audio.init(); audio.hover(); settings.difficulty = b.dataset.diff; saveSettings(); updateRaceOpts(); }));
   document.querySelectorAll('[data-opt]').forEach(b => b.addEventListener('click', () => { audio.init(); audio.hover(); settings[b.dataset.opt] = !settings[b.dataset.opt]; saveSettings(); updateRaceOpts(); }));
@@ -1279,7 +1512,9 @@ function bindUI() {
 
   // keyboard shortcut on menus
   window.addEventListener('keydown', e => {
-    if (state === 'title' && (e.code === 'Enter' || e.code === 'Space')) { audio.init(); toGarage(); }
+    if (e.target && e.target.tagName === 'INPUT') return; // typing in the sign-in form
+    if (!$('scr-tutorial').hidden) { if (e.code === 'Enter' || e.code === 'ArrowRight') $('tNext').click(); else if (e.code === 'ArrowLeft') $('tBack').click(); else if (e.code === 'Escape') $('tSkip').click(); return; }
+    if (state === 'title' && (e.code === 'Enter' || e.code === 'Space')) { audio.init(); enterGame(); }
     else if (state === 'garage' && !$('scr-upgrades').hidden && e.code === 'Escape') $('btnCloseUpgrades').click();
     else if (state === 'garage' && $('scr-settings').hidden && $('scr-upgrades').hidden) {
       if (e.code === 'ArrowLeft') $('btnPrev').click();
@@ -1296,6 +1531,7 @@ function syncSettingsUI() {
   document.querySelectorAll('[name=camera]').forEach(r => { r.checked = +r.value === settings.camera; });
   $('setAutoGas').checked = settings.autoGas;
   $('setTilt').checked = settings.tilt;
+  document.querySelectorAll('[name=ctlsize]').forEach(r => { r.checked = +r.value === (settings.ctlSize || 1); });
   $('setFps').checked = settings.fps;
 }
 
@@ -1340,6 +1576,7 @@ async function boot() {
     await Promise.race([Promise.all([document.fonts.load('700 40px Teko'), document.fonts.load('600 20px Rajdhani')]), new Promise(r => setTimeout(r, 2500))]);
   } catch (e) { /* fonts optional */ }
   let cars, props;
+  const accountReady = Promise.race([account.init(), new Promise(r => setTimeout(r, 8000))]).catch(() => {});
   try {
     audio.loadEngine('assets/engine.json');
     [cars, props] = await Promise.all([load('assets/cars.json', 'cars'), load('assets/props.json', 'props')]);
@@ -1351,13 +1588,24 @@ async function boot() {
   factory = new CarFactory(cars, settings.quality);
   buildGarage();
   bindUI();
+  bindAccountUI();
+  bindTutorialUI();
+  await accountReady;
+  updateAccountUI();
+  if (account.user) await adoptCloud();
   garageCar();
-  setState('title');
-  show('title');
+  if (account.available && !account.user && !lsGet(ONBOARD_KEY)) {
+    setState('welcome');
+    show('welcome');
+    $('wChoose').hidden = false; $('wForm').hidden = true;
+  } else {
+    setState('title');
+    show('title');
+  }
   // test hooks (used by the automated playtest)
   window.__cam = () => camera.position.toArray();
   window.__driftline = {
-    get race() { return race; }, startRace, settings, input, audio,
+    get race() { return race; }, startRace, settings, input, audio, account, career,
     autopilot(on = true) { race.player.autopilot = on ? new RacerAI(race.player, race.track, 1.0, { drifter: true, bias: 0 }) : null; },
     simulate(sec) {
       const n = Math.round(sec / STEP);
