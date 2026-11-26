@@ -203,7 +203,12 @@ function buildGarage() {
   s.add(rim);
 }
 
+function updateTrackCards() {
+  document.querySelectorAll('.trackcard').forEach((b, i) => b.setAttribute('aria-pressed', String(i === settings.track)));
+}
+
 function garageCar() {
+  updateTrackCards();
   const key = `${settings.car}|${settings.paint}|${settings.stripes}`;
   if (garage.carKey === key) return;
   const spec = CAR_LIST[settings.car];
@@ -227,7 +232,6 @@ function garageCar() {
   document.querySelectorAll('.swatch').forEach((b, i) => b.setAttribute('aria-pressed', String(i === settings.paint)));
   $('paintName').textContent = PAINTS[settings.paint].name;
   document.querySelectorAll('[data-livery]').forEach(b => b.setAttribute('aria-pressed', String((b.dataset.livery === 'stripes') === !!settings.stripes)));
-  document.querySelectorAll('.trackcard').forEach((b, i) => b.setAttribute('aria-pressed', String(i === settings.track)));
 }
 
 /** stat bars (base + bought upgrades), top speed, cash and the upgrade button */
@@ -447,6 +451,25 @@ function startRace() {
   $('intro').className = 'intro on';
   if (world.setLights) world.setLights(0);
   acc = 0;
+  warmUp();
+}
+
+/** compile every shader and fill the reflection map before the intro, so the fly-around doesn't stutter */
+function warmUp() {
+  const R = race;
+  try {
+    for (const c of R.allCars) if (!c.hidden) c.render(1, 0);
+    chasePose(R.player, cam.mode);
+    camera.position.copy(_pose.pos); camera.lookAt(_pose.look); camera.updateMatrixWorld();
+    renderer.compile(R.scene, camera);
+    renderPass.scene = R.scene; renderPass.camera = camera;
+    if (ao) { ao.scene = R.scene; ao.camera = camera; }
+    updateReflections(R);
+    composer.render(0);
+  } catch (e) { /* warm-up is only an optimisation */ }
+  last = performance.now();
+  prT = -3; // hold the resolution steady through the intro
+  frameAvg = 16;
 }
 
 // ------------------------------------------------------------------ physics
@@ -664,19 +687,44 @@ function onPlayerFinish() {
 // ------------------------------------------------------------------ camera
 const cam = { yaw: 0, h: 0, fov: 62, mode: 0, init: false, shakeT: 0 };
 const _v = new THREE.Vector3(), _w = new THREE.Vector3();
+const INTRO_LEN = 3.4;
+const _pose = { pos: new THREE.Vector3(), look: new THREE.Vector3(), fov: 60 };
+/** where the race camera sits behind a stationary car (matches updateCamera at zero speed) */
+function chasePose(p, mode) {
+  const s = Math.sin(p.rh), c = Math.cos(p.rh);
+  if (mode === 2) {
+    _pose.pos.set(p.rx + s * 0.4, p.ry + 1.12, p.rz + c * 0.4);
+    _pose.look.set(p.rx + s * 30, p.ry + 0.9, p.rz + c * 30);
+    _pose.fov = 68;
+  } else {
+    const far = mode === 1, dist = far ? 9.4 : 6.3;
+    _pose.pos.set(p.rx - s * dist, p.ry + (far ? 3.3 : 2.05), p.rz - c * dist);
+    _pose.look.set(p.rx + s * 5, p.ry + (far ? 1.1 : 1.15), p.rz + c * 5);
+    _pose.fov = 60;
+  }
+  return _pose;
+}
 
 function updateCamera(dt) {
   const R = race, p = R.player;
   if (window.__camOverride) { const o = window.__camOverride; camera.position.set(...o.pos); camera.lookAt(...o.look); camera.fov = o.fov || 55; camera.updateProjectionMatrix(); return; }
   if (R.phase === 'intro') {
-    const t = clamp(R.phaseT / 3.4, 0, 1);
-    const e = t * t * (3 - 2 * t);
-    const a = p.rh + Math.PI * (1 - e) * 1.15 + 0.35 * (1 - e);
-    const r = 7.5 + (1 - e) * 4;
-    camera.position.set(p.rx - Math.sin(a) * r, p.ry + 1.6 + (1 - e) * 2.2, p.rz - Math.cos(a) * r);
-    camera.lookAt(p.rx, p.ry + 0.8, p.rz);
-    camera.fov = 55; camera.updateProjectionMatrix();
-    cam.yaw = p.rh; cam.h = p.ry; cam.init = true;
+    // sweep around the car, then settle exactly on the chase camera so the hand-over has no jump
+    const t = clamp(R.introT / INTRO_LEN, 0, 1);
+    const e = 0.5 - 0.5 * Math.cos(Math.PI * t); // gentle ease in-out: starts moving right away, glides to a stop
+    const a = p.rh + Math.PI * 0.85 * (1 - e);
+    const r = 6.3 + (1 - e) * 3.2;
+    _v.set(p.rx - Math.sin(a) * r, p.ry + 2.05 + (1 - e) * 1.6, p.rz - Math.cos(a) * r);
+    // look target slides from the car body to the chase camera's point ahead of the car
+    const s = Math.sin(p.rh), c = Math.cos(p.rh);
+    _w.set(p.rx + s * 5 * e, p.ry + 0.8 + 0.35 * e, p.rz + c * 5 * e);
+    const k = THREE.MathUtils.smoothstep(t, 0.6, 1);
+    const chase = chasePose(p, cam.mode);
+    _v.lerp(chase.pos, k); _w.lerp(chase.look, k);
+    camera.position.copy(_v);
+    camera.lookAt(_w);
+    camera.fov = 52 + (chase.fov - 52) * e; camera.updateProjectionMatrix();
+    cam.yaw = p.rh; cam.h = p.ry; cam.fov = chase.fov; cam.lift = 0; cam.boost = 0; cam.init = true;
     return;
   }
   const velYaw = Math.atan2(p.vx, p.vz);
@@ -833,7 +881,8 @@ function updateAudio() {
 function raceFrame(dt) {
   const R = race;
   R.phaseT += dt;
-  if (R.phase === 'intro' && R.phaseT > 3.4) {
+  if (R.phase === 'intro') R.introT = (R.introT || 0) + Math.min(dt, 1 / 30);
+  if (R.phase === 'intro' && R.introT > INTRO_LEN) {
     R.phase = 'countdown'; R.phaseT = 0; R.lastCount = -1;
     $('intro').className = 'intro';
     hud.show(true);
@@ -1056,6 +1105,7 @@ function loop(now) {
   let dt = (now - last) / 1000;
   last = now;
   if (dt > 0.1) dt = 0.1;
+  if (dt < 0) dt = 0; // the frame timestamp can predate work done in an input handler (race warm-up)
   frameAvg = frameAvg * 0.95 + dt * 1000 * 0.05;
   if (settings.fps) { fpsAcc += dt; fpsN++; if (fpsAcc > 0.5) { $('fps').textContent = Math.round(fpsN / fpsAcc) + ' fps · ' + pixelRatio.toFixed(2) + 'x'; fpsAcc = 0; fpsN = 0; } }
   handleActions();
@@ -1190,7 +1240,10 @@ function bindUI() {
     info.children[1].textContent = def.time;
     info.children[2].textContent = `${def.laps} laps · ${(t.L / 1000).toFixed(1)} km`;
     b.appendChild(info);
-    b.addEventListener('click', () => { audio.init(); audio.hover(); settings.track = i; saveSettings(); garageCar(); });
+    b.addEventListener('click', () => {
+      audio.init(); audio.click(); settings.track = i; saveSettings(); updateTrackCards();
+      b.classList.remove('picked'); void b.offsetWidth; b.classList.add('picked');
+    });
     tl.appendChild(b);
   });
 
@@ -1302,6 +1355,7 @@ async function boot() {
   setState('title');
   show('title');
   // test hooks (used by the automated playtest)
+  window.__cam = () => camera.position.toArray();
   window.__driftline = {
     get race() { return race; }, startRace, settings, input, audio,
     autopilot(on = true) { race.player.autopilot = on ? new RacerAI(race.player, race.track, 1.0, { drifter: true, bias: 0 }) : null; },
